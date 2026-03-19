@@ -48,32 +48,42 @@ export default function App() {
     }
   }, []);
 
-  // Load user data and catalog
+  // Load catalog (always, regardless of auth)
+  useEffect(() => {
+    const loadCatalog = async () => {
+      setLoading(true);
+      try {
+        const [cats, prods] = await Promise.all([
+          api.getCategories(),
+          api.getProducts(),
+        ]);
+        setCategories(cats);
+        setProducts(prods);
+      } catch (err) {
+        console.error('Catalog load error:', err);
+      }
+      setLoading(false);
+    };
+    loadCatalog();
+  }, []);
+
+  // Load user-specific data when telegramId is available
   useEffect(() => {
     if (!telegramId) return;
 
-    const init = async () => {
-      setLoading(true);
+    const loadUser = async () => {
       try {
         const authRes = await api.authTelegram(telegramId);
         if (authRes.user) {
           setLang(authRes.user.language || 'uz');
         }
-        const [cats, prods, cartData] = await Promise.all([
-          api.getCategories(),
-          api.getProducts(),
-          api.getCart(telegramId),
-        ]);
-        setCategories(cats);
-        setProducts(prods);
+        const cartData = await api.getCart(telegramId);
         setCart(cartData);
       } catch (err) {
-        console.error('Init error:', err);
+        console.error('User load error:', err);
       }
-      setLoading(false);
     };
-
-    init();
+    loadUser();
   }, [telegramId]);
 
   // Debounced address search
