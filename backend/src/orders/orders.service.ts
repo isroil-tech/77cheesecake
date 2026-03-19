@@ -15,32 +15,57 @@ export class OrdersService {
     latitude?: number;
     longitude?: number;
     comment?: string;
+    items?: Array<{
+      productId: string;
+      name: { uz: string; ru: string };
+      format: string;
+      quantity: number;
+      pricePerUnit: number;
+    }>;
   }) {
-    const cart = await this.cartService.getOrCreateCart(userId);
+    let orderItems: any[] = [];
+    let grandTotal = 0;
 
-    if (!cart.items || cart.items.length === 0) {
+    // Try server-side cart first
+    const cart = await this.cartService.getOrCreateCart(userId);
+    if (cart.items && cart.items.length > 0) {
+      // Use server-side cart
+      orderItems = cart.items.map((item: any) => {
+        const price = Number(item.productVariant.price);
+        const lineTotal = price * item.quantity;
+        grandTotal += lineTotal;
+
+        return {
+          productVariantId: item.productVariant.id,
+          productNameUz: item.productVariant.product.nameUz,
+          productNameRu: item.productVariant.product.nameRu,
+          variantNameUz: item.productVariant.nameUz,
+          variantNameRu: item.productVariant.nameRu,
+          unitType: item.productVariant.unitType,
+          quantity: item.quantity,
+          unitPrice: price,
+          totalPrice: lineTotal,
+        };
+      });
+    } else if (data.items && data.items.length > 0) {
+      // Fallback: use items from request body (Lovable local cart)
+      orderItems = data.items.map((item) => {
+        const lineTotal = item.pricePerUnit * item.quantity;
+        grandTotal += lineTotal;
+        return {
+          productNameUz: item.name?.uz || item.productId,
+          productNameRu: item.name?.ru || item.productId,
+          variantNameUz: item.format || '',
+          variantNameRu: item.format || '',
+          unitType: item.format || 'piece',
+          quantity: item.quantity,
+          unitPrice: item.pricePerUnit,
+          totalPrice: lineTotal,
+        };
+      });
+    } else {
       throw new BadRequestException('Cart is empty');
     }
-
-    // Calculate totals and build order items
-    let grandTotal = 0;
-    const orderItems = cart.items.map((item: any) => {
-      const price = Number(item.productVariant.price);
-      const lineTotal = price * item.quantity;
-      grandTotal += lineTotal;
-
-      return {
-        productVariantId: item.productVariant.id,
-        productNameUz: item.productVariant.product.nameUz,
-        productNameRu: item.productVariant.product.nameRu,
-        variantNameUz: item.productVariant.nameUz,
-        variantNameRu: item.productVariant.nameRu,
-        unitType: item.productVariant.unitType,
-        quantity: item.quantity,
-        unitPrice: price,
-        totalPrice: lineTotal,
-      };
-    });
 
     // Create order in transaction — status = pending_payment
     const order = await this.prisma.$transaction(async (tx: any) => {
@@ -66,8 +91,10 @@ export class OrdersService {
         },
       });
 
-      // Clear cart after order
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      // Clear server cart if used
+      if (cart.items && cart.items.length > 0) {
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      }
 
       return newOrder;
     });
