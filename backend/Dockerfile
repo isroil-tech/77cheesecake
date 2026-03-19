@@ -24,5 +24,5 @@ RUN ls -la dist/src/ && echo "✅ dist/src/main.js exists" && test -f dist/src/m
 # Expose port (Railway sets PORT env var)
 EXPOSE 8080
 
-# Run migrations then start
-CMD sh -c "npx prisma migrate deploy && (npx prisma db seed || true) && node dist/src/main"
+# Run migrations, seed, then start
+CMD sh -c "npx prisma migrate deploy && echo '🌱 Running seed...' && npx prisma db seed && echo '✅ Seed done' && node dist/src/main"
