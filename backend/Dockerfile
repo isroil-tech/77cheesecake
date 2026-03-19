@@ -19,10 +19,10 @@ COPY . .
 RUN npx nest build
 
 # Verify dist exists
-RUN ls -la dist/ && echo "✅ dist/main.js exists" && test -f dist/main.js
+RUN ls -la dist/src/ && echo "✅ dist/src/main.js exists" && test -f dist/src/main.js
 
 # Expose port (Railway sets PORT env var)
 EXPOSE 8080
 
 # Run migrations then start
-CMD sh -c "npx prisma migrate deploy && (npx prisma db seed || true) && node dist/main"
+CMD sh -c "npx prisma migrate deploy && (npx prisma db seed || true) && node dist/src/main"
