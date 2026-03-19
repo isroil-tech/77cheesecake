@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         String   @id @default(uuid())
+  telegramId String   @unique @map("telegram_id")
+  phone      String?
+  firstName  String?  @map("first_name")
+  lastName   String?  @map("last_name")
+  language   String   @default("uz")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  cart   Cart?
+  orders Order[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  nameUz    String   @map("name_uz")
+  nameRu    String   @map("name_ru")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  categoryId    String   @map("category_id")
+  nameUz        String   @map("name_uz")
+  nameRu        String   @map("name_ru")
+  descriptionUz String?  @map("description_uz")
+  descriptionRu String?  @map("description_ru")
+  imageUrl      String?  @map("image_url")
+  isActive      Boolean  @default(true) @map("is_active")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  category Category         @relation(fields: [categoryId], references: [id])
+  variants ProductVariant[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id           String  @id @default(uuid())
+  productId    String  @map("product_id")
+  nameUz       String  @map("name_uz")
+  nameRu       String  @map("name_ru")
+  unitType     String  @map("unit_type") // whole | slice | piece
+  price        Decimal @db.Decimal(10, 2)
+  piecesPerUnit Int    @default(1) @map("pieces_per_unit")
+  isActive     Boolean @default(true) @map("is_active")
+  sortOrder    Int     @default(0) @map("sort_order")
+
+  product    Product     @relation(fields: [productId], references: [id])
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@map("product_variants")
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user  User       @relation(fields: [userId], references: [id])
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id               String @id @default(uuid())
+  cartId           String @map("cart_id")
+  productVariantId String @map("product_variant_id")
+  quantity         Int    @default(1)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  cart           Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+
+  @@unique([cartId, productVariantId])
+  @@map("cart_items")
+}
+
+model Order {
+  id           String   @id @default(uuid())
+  orderNumber  Int      @default(autoincrement()) @map("order_number")
+  userId       String   @map("user_id")
+  status       String   @default("new")
+  deliveryType String   @map("delivery_type") // delivery | pickup
+  address      String?
+  latitude     Float?
+  longitude    Float?
+  comment      String?
+  totalAmount  Decimal  @db.Decimal(10, 2) @map("total_amount")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user  User        @relation(fields: [userId], references: [id])
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String  @id @default(uuid())
+  orderId          String  @map("order_id")
+  productVariantId String  @map("product_variant_id")
+  productNameUz    String  @map("product_name_uz")
+  productNameRu    String  @map("product_name_ru")
+  variantNameUz    String  @map("variant_name_uz")
+  variantNameRu    String  @map("variant_name_ru")
+  unitType         String  @map("unit_type")
+  quantity         Int
+  unitPrice        Decimal @db.Decimal(10, 2) @map("unit_price")
+  totalPrice       Decimal @db.Decimal(10, 2) @map("total_price")
+
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+
+  @@map("order_items")
+}
