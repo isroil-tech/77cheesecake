@@ -1,20 +1,30 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Telegraf } from 'telegraf';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
   private bot: Telegraf;
-  private cafeGroupChatId: string;
 
-  constructor(private config: ConfigService) {
+  constructor(
+    private config: ConfigService,
+    private settingsService: SettingsService,
+  ) {
     this.bot = new Telegraf(this.config.get<string>('BOT_TOKEN')!);
-    this.cafeGroupChatId = this.config.get<string>('CAFE_GROUP_CHAT_ID') || '';
+  }
+
+  private async getCafeGroupChatId(): Promise<string> {
+    // Try DB first, then env fallback
+    const dbValue = await this.settingsService.getCafeGroupChatId();
+    if (dbValue) return dbValue;
+    return this.config.get<string>('CAFE_GROUP_CHAT_ID') || '';
   }
 
   async sendOrderToGroup(order: any) {
-    if (!this.cafeGroupChatId) {
+    const cafeGroupChatId = await this.getCafeGroupChatId();
+    if (!cafeGroupChatId) {
       this.logger.warn('CAFE_GROUP_CHAT_ID is not set, skipping group notification');
       return;
     }
@@ -27,14 +37,18 @@ export class NotificationService {
       ? (isRu ? '🚗 Доставка' : '🚗 Yetkazish')
       : (isRu ? '🏪 Самовывоз' : '🏪 Olib ketish');
 
+    // Payment type
+    const paymentLabel = order.paymentType === 'cash'
+      ? (isRu ? '💵 Наличные' : '💵 Naqd')
+      : order.paymentType === 'card'
+        ? (isRu ? '💳 Карта (перевод)' : '💳 Karta (o\'tkazma)')
+        : (isRu ? '⏳ Ожидание оплаты' : '⏳ To\'lov kutilmoqda');
+
     // Build items list
     const itemLines = order.items.map((item: any, idx: number) => {
       const name = isRu ? item.productNameRu : item.productNameUz;
-      const variant = isRu ? item.variantNameRu : item.variantNameUz;
-      const unitLabel = this.getUnitLabel(item.unitType, isRu);
-      const unitPrice = this.formatPrice(item.unitPrice);
       const totalPrice = this.formatPrice(item.totalPrice);
-      return `${idx + 1}. ${name} (${variant}) × ${item.quantity} = ${totalPrice} сум`;
+      return `${idx + 1}. ${name} × ${item.quantity} = ${totalPrice} сум`;
     }).join('\n');
 
     const message = [
@@ -48,6 +62,8 @@ export class NotificationService {
       order.address ? `📍 ${isRu ? 'Адрес' : 'Manzil'}: ${order.address}` : '',
       order.latitude ? `📍 GPS: ${order.latitude}, ${order.longitude}` : '',
       '',
+      `💰 ${isRu ? 'Оплата' : 'To\'lov'}: ${paymentLabel}`,
+      '',
       `📦 ${isRu ? 'Товары' : 'Mahsulotlar'}:`,
       itemLines,
       '',
@@ -58,22 +74,25 @@ export class NotificationService {
     ].filter(Boolean).join('\n');
 
     try {
-      await this.bot.telegram.sendMessage(this.cafeGroupChatId, message, {
+      await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
         parse_mode: 'HTML',
       });
+
+      // If there's a payment screenshot, send it as a photo
+      if (order.paymentScreenshot) {
+        try {
+          await this.bot.telegram.sendPhoto(cafeGroupChatId, order.paymentScreenshot, {
+            caption: `💳 ${isRu ? 'Чек оплаты' : 'To\'lov cheki'} — #${String(order.orderNumber).padStart(4, '0')}`,
+          });
+        } catch (e) {
+          this.logger.error('Failed to send payment screenshot', e);
+        }
+      }
+
       this.logger.log(`Order #${order.orderNumber} sent to cafe group`);
     } catch (e) {
       this.logger.error('Failed to send order to cafe group', e);
     }
-  }
-
-  private getUnitLabel(unitType: string, isRu: boolean): string {
-    const labels: Record<string, Record<string, string>> = {
-      whole: { ru: 'Целый', uz: 'Butun' },
-      slice: { ru: 'Кусок', uz: "Bo'lak" },
-      piece: { ru: 'Штука', uz: 'Dona' },
-    };
-    return labels[unitType]?.[isRu ? 'ru' : 'uz'] || unitType;
   }
 
   private formatPrice(amount: any): string {

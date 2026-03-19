@@ -42,11 +42,12 @@ export class OrdersService {
       };
     });
 
-    // Create order in transaction
+    // Create order in transaction — status = pending_payment
     const order = await this.prisma.$transaction(async (tx: any) => {
       const newOrder = await tx.order.create({
         data: {
           userId,
+          status: 'pending_payment',
           deliveryType: data.deliveryType,
           address: data.address,
           latitude: data.latitude,
@@ -72,6 +73,31 @@ export class OrdersService {
     });
 
     return order;
+  }
+
+  async confirmPayment(orderId: string, paymentType: string, paymentScreenshot?: string) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) {
+      throw new BadRequestException('Order not found');
+    }
+    if (order.status !== 'pending_payment') {
+      throw new BadRequestException('Order already paid');
+    }
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'new',
+        paymentType,
+        paymentScreenshot: paymentScreenshot || null,
+      },
+      include: {
+        items: {
+          include: { productVariant: { include: { product: true } } },
+        },
+        user: true,
+      },
+    });
   }
 
   async getOrdersByUser(userId: string) {

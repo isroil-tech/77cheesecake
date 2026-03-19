@@ -36,18 +36,36 @@ export class OrdersController {
 
     const order = await this.ordersService.createOrder(user.id, body);
 
-    // Send notifications asynchronously — don't block the response
-    const fullOrder = await this.ordersService.getOrderById(order.id);
-
-    // Notify user via bot
+    // Notify user that order is created and payment is needed
     this.telegramService.sendOrderNotification(
       telegramId,
       user.language,
       order.orderNumber,
     ).catch(() => {});
 
-    // Notify cafe group
-    this.telegramService.sendOrderToGroup(fullOrder).catch(() => {});
+    return order;
+  }
+
+  @Post(':id/payment')
+  async confirmPayment(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: {
+      paymentType: string; // 'cash' | 'card'
+      paymentScreenshot?: string; // base64 or URL
+    },
+  ) {
+    const telegramId = req.headers['x-telegram-id'];
+    if (!telegramId) return { error: 'Unauthorized' };
+
+    const order = await this.ordersService.confirmPayment(
+      id,
+      body.paymentType,
+      body.paymentScreenshot,
+    );
+
+    // NOW send to cafe group — order is confirmed with payment
+    this.telegramService.sendOrderToGroup(order).catch(() => {});
 
     return order;
   }

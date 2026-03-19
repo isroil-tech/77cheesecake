@@ -9,6 +9,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { SettingsModule } from './settings/settings.module';
 import { AuthController } from './auth/auth.controller';
 
 @Module({
@@ -25,6 +26,7 @@ import { AuthController } from './auth/auth.controller';
     CartModule,
     OrdersModule,
     TelegramModule,
+    SettingsModule,
   ],
   controllers: [AuthController],
 })

@@ -103,15 +103,17 @@ model Order {
   id           String   @id @default(uuid())
   orderNumber  Int      @default(autoincrement()) @map("order_number")
   userId       String   @map("user_id")
-  status       String   @default("new")
-  deliveryType String   @map("delivery_type") // delivery | pickup
-  address      String?
-  latitude     Float?
-  longitude    Float?
-  comment      String?
-  totalAmount  Decimal  @db.Decimal(10, 2) @map("total_amount")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  status            String   @default("pending_payment")
+  deliveryType      String   @map("delivery_type") // delivery | pickup
+  address           String?
+  latitude          Float?
+  longitude         Float?
+  comment           String?
+  paymentType       String?  @map("payment_type") // cash | card
+  paymentScreenshot String?  @map("payment_screenshot")
+  totalAmount       Decimal  @db.Decimal(10, 2) @map("total_amount")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   user  User        @relation(fields: [userId], references: [id])
   items OrderItem[]
@@ -136,4 +138,12 @@ model OrderItem {
   productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
 
   @@map("order_items")
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
 }

@@ -706,3 +706,135 @@ textarea.input-field {
   font-size: 16px;
   font-weight: 700;
 }
+
+/* ===== PAYMENT PAGE ===== */
+.payment-info-card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+}
+
+.payment-info-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.payment-info-card p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.card-number-box {
+  margin-top: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-number-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.card-number-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-light);
+  letter-spacing: 2px;
+  font-family: 'Courier New', monospace;
+}
+
+.upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent-light);
+}
+
+.upload-success {
+  color: var(--success);
+}
+
+.screenshot-preview {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  margin-top: 10px;
+  border: 1px solid var(--border);
+}
+
+/* ===== ADDRESS AUTOCOMPLETE ===== */
+.address-autocomplete {
+  position: relative;
+}
+
+.address-searching {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 4px;
+}
+
+.address-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-top: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 200;
+  box-shadow: var(--shadow-lg);
+}
+
+.address-suggestion-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  line-height: 1.4;
+}
+
+.address-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.address-suggestion-item:hover {
+  background: var(--bg-elevated);
+}
+
+.address-suggestion-item:active {
+  background: rgba(192, 132, 252, 0.1);
+}
+

@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from './api';
 import { t } from './i18n';
-import type { Category, Product, Cart, CartItem, User } from './types';
+import type { Category, Product, Cart } from './types';
 
-type Page = 'catalog' | 'cart' | 'checkout' | 'success';
+type Page = 'catalog' | 'cart' | 'checkout' | 'payment' | 'success';
 
 export default function App() {
   const [page, setPage] = useState<Page>('catalog');
@@ -16,9 +16,24 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
   const [address, setAddress] = useState('');
+  const [addressLat, setAddressLat] = useState<number | undefined>();
+  const [addressLon, setAddressLon] = useState<number | undefined>();
   const [comment, setComment] = useState('');
   const [orderNumber, setOrderNumber] = useState<number>(0);
+  const [orderId, setOrderId] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Payment state
+  const [paymentType, setPaymentType] = useState<'cash' | 'card'>('cash');
+  const [paymentScreenshot, setPaymentScreenshot] = useState<string>('');
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+
+  // Address autocomplete state
+  const [addressQuery, setAddressQuery] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<Array<{display_name: string; lat: string; lon: string}>>([]);
+  const [addressSearching, setAddressSearching] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchTimeout = useRef<any>(null);
 
   // Initialize Telegram WebApp
   useEffect(() => {
@@ -40,13 +55,10 @@ export default function App() {
     const init = async () => {
       setLoading(true);
       try {
-        // Auth and get user
         const authRes = await api.authTelegram(telegramId);
         if (authRes.user) {
           setLang(authRes.user.language || 'uz');
         }
-
-        // Load catalog
         const [cats, prods, cartData] = await Promise.all([
           api.getCategories(),
           api.getProducts(),
@@ -64,7 +76,33 @@ export default function App() {
     init();
   }, [telegramId]);
 
-  // Filtered products by category
+  // Debounced address search
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
+    if (addressQuery.length < 3) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setAddressSearching(true);
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const results = await api.searchAddress(addressQuery);
+        setAddressSuggestions(results);
+        setShowSuggestions(true);
+      } catch {
+        setAddressSuggestions([]);
+      }
+      setAddressSearching(false);
+    }, 400);
+
+    return () => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    };
+  }, [addressQuery]);
+
   const filteredProducts = activeCategory === 'all'
     ? products
     : products.filter((p) => p.categoryId === activeCategory);
@@ -86,8 +124,7 @@ export default function App() {
     try {
       await api.addToCart(telegramId, variantId, 1);
       await refreshCart();
-      const tg = window.Telegram?.WebApp;
-      tg?.HapticFeedback?.impactOccurred('light');
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');
     } catch (err) {
       console.error(err);
     }
@@ -123,16 +160,55 @@ export default function App() {
       const order = await api.createOrder(telegramId, {
         deliveryType,
         address: address.trim() || undefined,
+        latitude: addressLat,
+        longitude: addressLon,
         comment: comment.trim() || undefined,
       });
       setOrderNumber(order.orderNumber);
-      setPage('success');
+      setOrderId(order.id);
+      setPage('payment');
       setCart(null);
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
     } catch (err) {
       console.error(err);
     }
     setSubmitting(false);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!telegramId || !orderId || paymentSubmitting) return;
+    if (paymentType === 'card' && !paymentScreenshot) return;
+
+    setPaymentSubmitting(true);
+    try {
+      await api.confirmPayment(telegramId, orderId, {
+        paymentType,
+        paymentScreenshot: paymentType === 'card' ? paymentScreenshot : undefined,
+      });
+      setPage('success');
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
+    } catch (err) {
+      console.error(err);
+    }
+    setPaymentSubmitting(false);
+  };
+
+  const handleSelectAddress = (suggestion: {display_name: string; lat: string; lon: string}) => {
+    setAddress(suggestion.display_name);
+    setAddressQuery(suggestion.display_name);
+    setAddressLat(parseFloat(suggestion.lat));
+    setAddressLon(parseFloat(suggestion.lon));
+    setShowSuggestions(false);
+  };
+
+  const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPaymentScreenshot(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const getName = (item: { nameUz: string; nameRu: string }) =>
@@ -175,6 +251,100 @@ export default function App() {
     );
   }
 
+  // Payment page
+  if (page === 'payment') {
+    return (
+      <>
+        <header className="header">
+          <div className="header-content">
+            <div className="logo">77Cheesecake</div>
+          </div>
+        </header>
+
+        <div className="page">
+          <div className="page-title">{t(lang, 'payment')}</div>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: 14 }}>
+            {lang === 'ru' ? `Заказ #${String(orderNumber).padStart(4, '0')} — ${formatPrice(cartTotal || 0)} сум` : `Buyurtma #${String(orderNumber).padStart(4, '0')} — ${formatPrice(cartTotal || 0)} so'm`}
+          </p>
+
+          {/* Payment method selection */}
+          <div className="checkout-section">
+            <h3>{t(lang, 'paymentMethod')}</h3>
+            <div className="delivery-options">
+              <button
+                className={`delivery-option ${paymentType === 'cash' ? 'active' : ''}`}
+                onClick={() => setPaymentType('cash')}
+              >
+                💵 {t(lang, 'cashPayment')}
+              </button>
+              <button
+                className={`delivery-option ${paymentType === 'card' ? 'active' : ''}`}
+                onClick={() => setPaymentType('card')}
+              >
+                💳 {t(lang, 'cardPayment')}
+              </button>
+            </div>
+          </div>
+
+          {paymentType === 'cash' && (
+            <div className="checkout-section">
+              <div className="payment-info-card">
+                <div className="payment-info-icon">💵</div>
+                <p>{t(lang, 'cashDesc')}</p>
+              </div>
+            </div>
+          )}
+
+          {paymentType === 'card' && (
+            <div className="checkout-section">
+              <div className="payment-info-card">
+                <div className="payment-info-icon">💳</div>
+                <p>{t(lang, 'cardDesc')}</p>
+                <div className="card-number-box">
+                  <span className="card-number-label">{t(lang, 'cardNumber')}:</span>
+                  <span className="card-number-value">8600 1234 5678 9012</span>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <label className="upload-btn">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleScreenshotUpload}
+                    style={{ display: 'none' }}
+                  />
+                  {paymentScreenshot ? (
+                    <span className="upload-success">✅ {t(lang, 'screenshotUploaded')}</span>
+                  ) : (
+                    <span>📷 {t(lang, 'uploadScreenshot')}</span>
+                  )}
+                </label>
+                {paymentScreenshot && (
+                  <img src={paymentScreenshot} alt="Payment screenshot" className="screenshot-preview" />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom bar */}
+        <div className="bottom-bar">
+          <div className="bottom-bar-content">
+            <button
+              className="primary-btn"
+              onClick={handleConfirmPayment}
+              disabled={paymentSubmitting || (paymentType === 'card' && !paymentScreenshot)}
+              style={{ width: '100%' }}
+            >
+              {paymentSubmitting ? '...' : t(lang, 'confirmPayment')}
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   // Checkout page
   if (page === 'checkout') {
     return (
@@ -210,17 +380,46 @@ export default function App() {
             </div>
           </div>
 
-          {/* Address */}
+          {/* Address with autocomplete */}
           {deliveryType === 'delivery' && (
             <div className="checkout-section">
               <h3>{t(lang, 'address')}</h3>
-              <input
-                className="input-field"
-                type="text"
-                placeholder={t(lang, 'enterAddress')}
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-              />
+              <div className="address-autocomplete">
+                <input
+                  className="input-field"
+                  type="text"
+                  placeholder={t(lang, 'enterAddress')}
+                  value={addressQuery}
+                  onChange={(e) => {
+                    setAddressQuery(e.target.value);
+                    setAddress(e.target.value);
+                    setAddressLat(undefined);
+                    setAddressLon(undefined);
+                  }}
+                  onFocus={() => {
+                    if (addressSuggestions.length > 0) setShowSuggestions(true);
+                  }}
+                />
+                {addressSearching && (
+                  <div className="address-searching">{t(lang, 'searchingAddress')}</div>
+                )}
+                {showSuggestions && addressSuggestions.length > 0 && (
+                  <div className="address-suggestions">
+                    {addressSuggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        className="address-suggestion-item"
+                        onClick={() => handleSelectAddress(s)}
+                      >
+                        📍 {s.display_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showSuggestions && !addressSearching && addressQuery.length >= 3 && addressSuggestions.length === 0 && (
+                  <div className="address-searching">{t(lang, 'noResults')}</div>
+                )}
+              </div>
             </div>
           )}
 
