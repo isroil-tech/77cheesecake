@@ -128,14 +128,15 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         if (existing?.phone && existing?.firstName) {
           const lang = existing.language || 'uz';
           const miniAppUrl = this.config.get<string>('MINI_APP_URL') || '';
-          if (!miniAppUrl || miniAppUrl === 'https://77cheesecake.local') {
+                  if (!miniAppUrl || miniAppUrl === 'https://77cheesecake.local') {
             await ctx.reply(this.i18n.t(lang, 'openMenuText') + '\n\n⚠️ Mini App hali sozlanmagan');
             return;
           }
+          const personalUrl = `${miniAppUrl.replace(/\/$/, '')}?uid=${telegramId}`;
           await ctx.reply(
             this.i18n.t(lang, 'openMenuText'),
             Markup.keyboard([
-              [Markup.button.webApp(this.i18n.t(lang, 'openMenu'), miniAppUrl)],
+              [Markup.button.webApp(this.i18n.t(lang, 'openMenu'), personalUrl)],
             ]).resize(),
           );
           return;
@@ -215,19 +216,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           await this.usersService.createOrUpdate(telegramId, { firstName: name });
           this.userStates.delete(ctx.from.id);
 
-          const miniAppUrl = this.config.get<string>('MINI_APP_URL') || '';
-          if (!miniAppUrl || miniAppUrl === 'https://77cheesecake.local') {
-            await ctx.reply(
-              this.i18n.t(lang, 'nameReceived', { name }) + '\n\n✅ Ro\'yxatdan o\'tdingiz!',
-              Markup.removeKeyboard(),
-            );
+                    const miniAppUrl2 = this.config.get<string>('MINI_APP_URL') || '';
+          if (!miniAppUrl2 || miniAppUrl2 === 'https://77cheesecake.local') {
+            await ctx.reply(this.i18n.t(lang, 'nameReceived', { name }) + '\n\n✅ Ro\'yxatdan o\'tdingiz!');
             return;
           }
-
+          const personalUrl2 = `${miniAppUrl2.replace(/\/$/, '')}?uid=${telegramId}`;
           await ctx.reply(
             this.i18n.t(lang, 'nameReceived', { name }) + '\n\n' + this.i18n.t(lang, 'openMenuText'),
             Markup.keyboard([
-              [Markup.button.webApp(this.i18n.t(lang, 'openMenu'), miniAppUrl)],
+              [Markup.button.webApp(this.i18n.t(lang, 'openMenu'), personalUrl2)],
             ]).resize(),
           );
           return;
@@ -236,16 +234,17 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         // Default
         const user = await this.usersService.findByTelegramId(telegramId);
         if (user?.phone && user?.firstName) {
-          const lang = user.language || 'uz';
-          const miniAppUrl = this.config.get<string>('MINI_APP_URL') || '';
-          if (!miniAppUrl || miniAppUrl === 'https://77cheesecake.local') {
-            await ctx.reply(this.i18n.t(lang, 'openMenuText'));
+                    const lang3 = user.language || 'uz';
+          const miniAppUrl3 = this.config.get<string>('MINI_APP_URL') || '';
+          if (!miniAppUrl3 || miniAppUrl3 === 'https://77cheesecake.local') {
+            await ctx.reply(this.i18n.t(lang3, 'openMenuText'));
             return;
           }
+          const personalUrl3 = `${miniAppUrl3.replace(/\/$/, '')}?uid=${telegramId}`;
           await ctx.reply(
-            this.i18n.t(lang, 'openMenuText'),
+            this.i18n.t(lang3, 'openMenuText'),
             Markup.keyboard([
-              [Markup.button.webApp(this.i18n.t(lang, 'openMenu'), miniAppUrl)],
+              [Markup.button.webApp(this.i18n.t(lang3, 'openMenu'), personalUrl3)],
             ]).resize(),
           );
         }
