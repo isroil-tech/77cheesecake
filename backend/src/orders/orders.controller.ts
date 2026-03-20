@@ -116,6 +116,7 @@ export class OrdersController {
       latitude?: number;
       longitude?: number;
       comment?: string;
+      extraPhone?: string;
       items?: any[];
     },
   ) {
@@ -128,10 +129,7 @@ export class OrdersController {
 
     const order = await this.ordersService.createOrder(user.id, body);
 
-    // Send to cafe group immediately when order is created
-    this.telegramService.sendOrderToGroup(order).catch(() => {});
-
-    // Also notify user that order is created and payment is needed
+    // Only notify the USER that order was created (not group — group gets notified after payment)
     this.telegramService.sendOrderNotification(
       telegramId,
       user.language,

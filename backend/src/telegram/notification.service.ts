@@ -81,19 +81,22 @@ export class NotificationService {
     ].filter(Boolean).join('\n');
 
     try {
-      await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
-        parse_mode: 'HTML',
-      });
-
-      // If there's a payment screenshot, send it as a photo
+      // If payment screenshot exists, send order info + screenshot as one message
       if (order.paymentScreenshot) {
         try {
-          await this.bot.telegram.sendPhoto(cafeGroupChatId, order.paymentScreenshot, {
-            caption: `💳 ${isRu ? 'Чек оплаты' : 'To\'lov cheki'} — #${String(order.orderNumber).padStart(4, '0')}`,
-          });
-        } catch (e) {
-          this.logger.error('Failed to send payment screenshot', e);
+          const base64 = order.paymentScreenshot.replace(/^data:image\/\w+;base64,/, '');
+          const buf = Buffer.from(base64, 'base64');
+          await this.bot.telegram.sendPhoto(
+            cafeGroupChatId,
+            { source: buf },
+            { caption: message, parse_mode: 'HTML' }
+          );
+        } catch (photoErr) {
+          this.logger.error('Failed to send photo, sending text only', photoErr);
+          await this.bot.telegram.sendMessage(cafeGroupChatId, message, { parse_mode: 'HTML' });
         }
+      } else {
+        await this.bot.telegram.sendMessage(cafeGroupChatId, message, { parse_mode: 'HTML' });
       }
 
       this.logger.log(`Order #${order.orderNumber} sent to cafe group`);
