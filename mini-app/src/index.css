@@ -838,3 +838,88 @@ textarea.input-field {
   background: rgba(192, 132, 252, 0.1);
 }
 
+
+/* ===== LOCATION METHOD BUTTONS ===== */
+.location-methods {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.location-method-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+}
+
+.location-method-btn:hover {
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.location-method-btn.active {
+  border-color: var(--accent);
+  background: rgba(192, 132, 252, 0.12);
+  color: var(--accent-light);
+  box-shadow: 0 0 16px rgba(192, 132, 252, 0.2);
+}
+
+.location-method-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.location-method-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.location-method-label {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.location-result {
+  margin-top: 8px;
+}
+
+.location-detecting {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 10px 0;
+}
+
+.location-detected {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.location-detected-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}

@@ -35,6 +35,10 @@ export default function App() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchTimeout = useRef<any>(null);
 
+  // Location method state
+  const [locationMethod, setLocationMethod] = useState<'none' | 'gps' | 'map' | 'search'>('none');
+  const [detectingLocation, setDetectingLocation] = useState(false);
+
   // Initialize Telegram WebApp
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -209,6 +213,51 @@ export default function App() {
     setAddressLat(parseFloat(suggestion.lat));
     setAddressLon(parseFloat(suggestion.lon));
     setShowSuggestions(false);
+  };
+
+  // Handle GPS location
+  const handleSendLocation = async () => {
+    setDetectingLocation(true);
+    setLocationMethod('gps');
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+      });
+      const { latitude, longitude } = position.coords;
+      setAddressLat(latitude);
+      setAddressLon(longitude);
+      // Reverse geocode to get address text
+      const result = await api.reverseGeocode(latitude, longitude);
+      if (result && result.display_name) {
+        setAddress(result.display_name);
+        setAddressQuery(result.display_name);
+      } else {
+        setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        setAddressQuery(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+      }
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
+    } catch {
+      // If geolocation fails, keep method selected but show nothing
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('error');
+    }
+    setDetectingLocation(false);
+  };
+
+  // Handle mark on map
+  const handleMarkOnMap = () => {
+    setLocationMethod('map');
+    // Open Yandex Maps for Tashkent as a pick-location flow
+    const mapUrl = `https://yandex.uz/maps/?ll=69.2401,41.3111&z=12&mode=search`;
+    // @ts-ignore
+    if (window.Telegram?.WebApp?.openLink) {
+      // @ts-ignore
+      window.Telegram.WebApp.openLink(mapUrl);
+    } else {
+      window.open(mapUrl, '_blank');
+    }
   };
 
   const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -390,46 +439,119 @@ export default function App() {
             </div>
           </div>
 
-          {/* Address with autocomplete */}
+          {/* Address with 3 location methods */}
           {deliveryType === 'delivery' && (
             <div className="checkout-section">
               <h3>{t(lang, 'address')}</h3>
-              <div className="address-autocomplete">
-                <input
-                  className="input-field"
-                  type="text"
-                  placeholder={t(lang, 'enterAddress')}
-                  value={addressQuery}
-                  onChange={(e) => {
-                    setAddressQuery(e.target.value);
-                    setAddress(e.target.value);
-                    setAddressLat(undefined);
-                    setAddressLon(undefined);
-                  }}
-                  onFocus={() => {
-                    if (addressSuggestions.length > 0) setShowSuggestions(true);
-                  }}
-                />
-                {addressSearching && (
-                  <div className="address-searching">{t(lang, 'searchingAddress')}</div>
-                )}
-                {showSuggestions && addressSuggestions.length > 0 && (
-                  <div className="address-suggestions">
-                    {addressSuggestions.map((s, i) => (
-                      <button
-                        key={i}
-                        className="address-suggestion-item"
-                        onClick={() => handleSelectAddress(s)}
-                      >
-                        📍 {s.display_name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {showSuggestions && !addressSearching && addressQuery.length >= 3 && addressSuggestions.length === 0 && (
-                  <div className="address-searching">{t(lang, 'noResults')}</div>
-                )}
+              <div className="location-methods">
+                <button
+                  className={`location-method-btn ${locationMethod === 'gps' ? 'active' : ''}`}
+                  onClick={handleSendLocation}
+                  disabled={detectingLocation}
+                >
+                  <span className="location-method-icon">📍</span>
+                  <span className="location-method-label">{t(lang, 'sendLocation')}</span>
+                </button>
+                <button
+                  className={`location-method-btn ${locationMethod === 'map' ? 'active' : ''}`}
+                  onClick={handleMarkOnMap}
+                >
+                  <span className="location-method-icon">🗺</span>
+                  <span className="location-method-label">{t(lang, 'markOnMap')}</span>
+                </button>
+                <button
+                  className={`location-method-btn ${locationMethod === 'search' ? 'active' : ''}`}
+                  onClick={() => setLocationMethod('search')}
+                >
+                  <span className="location-method-icon">🔍</span>
+                  <span className="location-method-label">{t(lang, 'searchAddress')}</span>
+                </button>
               </div>
+
+              {/* GPS result */}
+              {locationMethod === 'gps' && (
+                <div className="location-result">
+                  {detectingLocation ? (
+                    <div className="location-detecting">
+                      <div className="spinner" style={{ width: 20, height: 20, borderWidth: 2, marginRight: 8 }} />
+                      {t(lang, 'detectingLocation')}
+                    </div>
+                  ) : address ? (
+                    <div className="location-detected">
+                      <span className="location-detected-icon">✅</span>
+                      <span>{address}</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {/* Map result — user can paste/type address after viewing map */}
+              {locationMethod === 'map' && (
+                <div className="location-result">
+                  <input
+                    className="input-field"
+                    type="text"
+                    placeholder={t(lang, 'enterAddress')}
+                    value={addressQuery}
+                    onChange={(e) => {
+                      setAddressQuery(e.target.value);
+                      setAddress(e.target.value);
+                      setAddressLat(undefined);
+                      setAddressLon(undefined);
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Search with autocomplete */}
+              {locationMethod === 'search' && (
+                <div className="location-result">
+                  <div className="address-autocomplete">
+                    <input
+                      className="input-field"
+                      type="text"
+                      placeholder={t(lang, 'enterAddress')}
+                      value={addressQuery}
+                      onChange={(e) => {
+                        setAddressQuery(e.target.value);
+                        setAddress(e.target.value);
+                        setAddressLat(undefined);
+                        setAddressLon(undefined);
+                      }}
+                      onFocus={() => {
+                        if (addressSuggestions.length > 0) setShowSuggestions(true);
+                      }}
+                    />
+                    {addressSearching && (
+                      <div className="address-searching">{t(lang, 'searchingAddress')}</div>
+                    )}
+                    {showSuggestions && addressSuggestions.length > 0 && (
+                      <div className="address-suggestions">
+                        {addressSuggestions.map((s, i) => (
+                          <button
+                            key={i}
+                            className="address-suggestion-item"
+                            onClick={() => handleSelectAddress(s)}
+                          >
+                            📍 {s.display_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {showSuggestions && !addressSearching && addressQuery.length >= 3 && addressSuggestions.length === 0 && (
+                      <div className="address-searching">{t(lang, 'noResults')}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Show selected address for any method */}
+              {locationMethod !== 'none' && address && locationMethod !== 'gps' && (
+                <div className="location-detected" style={{ marginTop: 8 }}>
+                  <span className="location-detected-icon">✅</span>
+                  <span>{t(lang, 'locationDetected')}</span>
+                </div>
+              )}
             </div>
           )}
 

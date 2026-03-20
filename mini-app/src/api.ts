@@ -112,7 +112,7 @@ export const api = {
     const params = new URLSearchParams({
       q: query,
       format: 'json',
-      limit: '5',
+      limit: '10',
       countrycodes: 'uz',
       addressdetails: '1',
     });
@@ -120,5 +120,27 @@ export const api = {
       headers: { 'Accept-Language': 'ru,uz' },
     });
     return res.json();
+  },
+
+  // Reverse geocode (lat/lon → address)
+  reverseGeocode: async (lat: number, lon: number): Promise<{
+    display_name: string;
+    lat: string;
+    lon: string;
+  } | null> => {
+    try {
+      const params = new URLSearchParams({
+        lat: lat.toString(),
+        lon: lon.toString(),
+        format: 'json',
+        addressdetails: '1',
+      });
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`, {
+        headers: { 'Accept-Language': 'ru,uz' },
+      });
+      return res.json();
+    } catch {
+      return null;
+    }
   },
 };

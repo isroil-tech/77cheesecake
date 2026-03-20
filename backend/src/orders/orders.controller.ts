@@ -31,8 +31,10 @@ export class OrdersController {
   ) {
     const telegramId = req.headers['x-telegram-id'];
     if (!telegramId) return { error: 'Unauthorized' };
-    const user = await this.usersService.findByTelegramId(telegramId);
-    if (!user) return { error: 'User not found' };
+    let user = await this.usersService.findByTelegramId(telegramId);
+    if (!user) {
+      user = await this.usersService.createOrUpdate(telegramId, {});
+    }
 
     const order = await this.ordersService.createOrder(user.id, body);
 

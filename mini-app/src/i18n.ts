@@ -43,6 +43,12 @@ export const translations: Record<string, Record<string, string>> = {
     paymentPending: 'To\'lov kutilmoqda...',
     searchingAddress: 'Qidirilmoqda...',
     noResults: 'Natija topilmadi',
+    sendLocation: 'Joylashuvni yuborish',
+    markOnMap: 'Xaritadan belgilash',
+    searchAddress: 'Qidiruv',
+    locationDetected: 'Joylashuv aniqlandi',
+    detectingLocation: 'Joylashuv aniqlanmoqda...',
+    openMap: 'Xaritani ochish',
   },
   ru: {
     catalog: 'Каталог',
@@ -88,6 +94,12 @@ export const translations: Record<string, Record<string, string>> = {
     paymentPending: 'Ожидание оплаты...',
     searchingAddress: 'Поиск...',
     noResults: 'Ничего не найдено',
+    sendLocation: 'Отправить геолокацию',
+    markOnMap: 'Отметить на карте',
+    searchAddress: 'Поиск',
+    locationDetected: 'Местоположение определено',
+    detectingLocation: 'Определяем местоположение...',
+    openMap: 'Открыть карту',
   },
 };
 
