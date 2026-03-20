@@ -18,6 +18,7 @@ export class UsersService {
     firstName?: string;
     lastName?: string;
     language?: string;
+    phone?: string;
   }) {
     return this.prisma.user.upsert({
       where: { telegramId },
@@ -37,6 +38,7 @@ export class UsersService {
     firstName?: string;
     lastName?: string;
     language?: string;
+    phone?: string;
   }) {
     return this.prisma.user.update({
       where: { id: userId },
