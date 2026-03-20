@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Patch, Param, Body, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Req, Headers, ForbiddenException } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { UsersService } from '../users/users.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('api/v1/orders')
 export class OrdersController {
@@ -9,6 +10,7 @@ export class OrdersController {
     private ordersService: OrdersService,
     private usersService: UsersService,
     private telegramService: TelegramService,
+    private config: ConfigService,
   ) {}
 
   private async getUserId(req: any): Promise<string | null> {
@@ -16,6 +18,18 @@ export class OrdersController {
     if (!telegramId) return null;
     const user = await this.usersService.findByTelegramId(telegramId);
     return user?.id || null;
+  }
+
+  private checkAdminKey(adminKey: string) {
+    const expected = this.config.get<string>('ADMIN_KEY') || 'admin123';
+    if (adminKey !== expected) throw new ForbiddenException('Invalid admin key');
+  }
+
+  /** Admin: get ALL orders */
+  @Get('admin/all')
+  async getAllOrders(@Headers('x-admin-key') adminKey: string) {
+    this.checkAdminKey(adminKey);
+    return this.ordersService.getAllOrders();
   }
 
   @Post()
@@ -27,6 +41,7 @@ export class OrdersController {
       latitude?: number;
       longitude?: number;
       comment?: string;
+      items?: any[];
     },
   ) {
     const telegramId = req.headers['x-telegram-id'];
@@ -38,7 +53,10 @@ export class OrdersController {
 
     const order = await this.ordersService.createOrder(user.id, body);
 
-    // Notify user that order is created and payment is needed
+    // Send to cafe group immediately when order is created
+    this.telegramService.sendOrderToGroup(order).catch(() => {});
+
+    // Also notify user that order is created and payment is needed
     this.telegramService.sendOrderNotification(
       telegramId,
       user.language,
@@ -53,8 +71,8 @@ export class OrdersController {
     @Req() req: any,
     @Param('id') id: string,
     @Body() body: {
-      paymentType: string; // 'cash' | 'card'
-      paymentScreenshot?: string; // base64 or URL
+      paymentType: string;
+      paymentScreenshot?: string;
     },
   ) {
     const telegramId = req.headers['x-telegram-id'];
@@ -66,7 +84,7 @@ export class OrdersController {
       body.paymentScreenshot,
     );
 
-    // NOW send to cafe group — order is confirmed with payment
+    // Send updated order info to group with payment details
     this.telegramService.sendOrderToGroup(order).catch(() => {});
 
     return order;
