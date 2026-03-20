@@ -28,6 +28,15 @@ export class OrdersController {
     }
   }
 
+  /** Public: app settings (card number etc.) */
+  @Get('settings')
+  getSettings() {
+    return {
+      cardNumber: this.config.get<string>('CARD_NUMBER') || '',
+      cardHolder: this.config.get<string>('CARD_HOLDER') || '77Cheesecake',
+    };
+  }
+
   /** Admin: verify if user is admin */
   @Get('admin/verify')
   async verifyAdmin(@Headers('x-telegram-id') telegramId: string) {
