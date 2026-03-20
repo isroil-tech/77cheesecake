@@ -46,12 +46,57 @@ export class OrdersController {
     return this.ordersService.getAllOrders();
   }
 
-  /** Admin: full statistics */
+  /** Admin: full order statistics */
   @Get('admin/stats')
   async getAdminStats(@Headers('x-telegram-id') telegramId: string) {
     this.checkAdmin(telegramId);
     return this.ordersService.getAdminStats();
   }
+
+  /** Admin: bot & user statistics */
+  @Get('admin/bot-stats')
+  async getBotStats(@Headers('x-telegram-id') telegramId: string) {
+    this.checkAdmin(telegramId);
+    return this.usersService.getBotStats();
+  }
+
+  /** Admin: all users list */
+  @Get('admin/users')
+  async getUsers(@Headers('x-telegram-id') telegramId: string) {
+    this.checkAdmin(telegramId);
+    return this.usersService.getAllUsers();
+  }
+
+  /** Admin: broadcast to all users */
+  @Post('admin/broadcast')
+  async broadcast(
+    @Headers('x-telegram-id') telegramId: string,
+    @Body() body: { message: string },
+  ) {
+    this.checkAdmin(telegramId);
+    const users = await this.usersService.getAllUsers();
+    let sent = 0, failed = 0;
+    for (const user of users) {
+      try {
+        await this.telegramService.sendDirectMessage(user.telegramId, body.message);
+        sent++;
+        await new Promise(r => setTimeout(r, 50)); // Rate limit
+      } catch { failed++; }
+    }
+    return { sent, failed, total: users.length };
+  }
+
+  /** Admin: send message to specific user */
+  @Post('admin/message')
+  async sendMessage(
+    @Headers('x-telegram-id') telegramId: string,
+    @Body() body: { targetTelegramId: string; message: string },
+  ) {
+    this.checkAdmin(telegramId);
+    await this.telegramService.sendDirectMessage(body.targetTelegramId, body.message);
+    return { success: true };
+  }
+
 
   @Post('orders')
   async createOrder(

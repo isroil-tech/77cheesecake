@@ -305,4 +305,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Failed to send status update to ${telegramId}`, e);
     }
   }
+
+  async sendDirectMessage(telegramId: string, text: string) {
+    await this.bot.telegram.sendMessage(telegramId, text, { parse_mode: 'HTML' });
+  }
 }
+

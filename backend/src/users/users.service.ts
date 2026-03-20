@@ -43,4 +43,51 @@ export class UsersService {
       data,
     });
   }
+
+  async getAllUsers() {
+    return this.prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getBotStats() {
+    const allUsers = await this.prisma.user.findMany();
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const withPhone = allUsers.filter(u => u.phone).length;
+    const withoutPhone = allUsers.length - withPhone;
+    const uzUsers = allUsers.filter(u => u.language === 'uz').length;
+    const ruUsers = allUsers.filter(u => u.language === 'ru').length;
+    const noLang = allUsers.filter(u => !u.language).length;
+
+    const recentUsers = allUsers.filter(u => new Date(u.createdAt) >= thirtyDaysAgo).length;
+
+    // New users per day last 7 days
+    const last7Days: { date: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+      last7Days.push({
+        date: dayStart.toISOString().slice(0, 10),
+        count: allUsers.filter(u => {
+          const t = new Date(u.createdAt);
+          return t >= dayStart && t < dayEnd;
+        }).length,
+      });
+    }
+
+    return {
+      totalUsers: allUsers.length,
+      withPhone,
+      withoutPhone,
+      uzUsers,
+      ruUsers,
+      noLang,
+      newLast30Days: recentUsers,
+      last7Days,
+    };
+  }
 }
