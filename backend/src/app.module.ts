@@ -15,10 +15,17 @@ import { AuthController } from './auth/auth.controller';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', '..', 'public'),
-      exclude: ['/api/{*path}'],
-    }),
+    ServeStaticModule.forRoot(
+      {
+        rootPath: join(__dirname, '..', '..', 'public', 'admin'),
+        serveRoot: '/admin',
+        exclude: ['/api/{*path}'],
+      },
+      {
+        rootPath: join(__dirname, '..', '..', 'public'),
+        exclude: ['/api/{*path}', '/admin/{*path}'],
+      },
+    ),
     PrismaModule,
     I18nModule,
     UsersModule,
