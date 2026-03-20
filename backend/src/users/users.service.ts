@@ -18,7 +18,6 @@ export class UsersService {
     firstName?: string;
     lastName?: string;
     language?: string;
-    phone?: string;
   }) {
     return this.prisma.user.upsert({
       where: { telegramId },
@@ -58,14 +57,10 @@ export class UsersService {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const withPhone = allUsers.filter(u => u.phone).length;
-    const withoutPhone = allUsers.length - withPhone;
     const uzUsers = allUsers.filter(u => u.language === 'uz').length;
     const ruUsers = allUsers.filter(u => u.language === 'ru').length;
-    const noLang = allUsers.filter(u => !u.language).length;
-
     const recentUsers = allUsers.filter(u => new Date(u.createdAt) >= thirtyDaysAgo).length;
 
-    // New users per day last 7 days
     const last7Days: { date: string; count: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now);
@@ -84,10 +79,10 @@ export class UsersService {
     return {
       totalUsers: allUsers.length,
       withPhone,
-      withoutPhone,
+      withoutPhone: allUsers.length - withPhone,
       uzUsers,
       ruUsers,
-      noLang,
+      noLang: allUsers.filter(u => !u.language).length,
       newLast30Days: recentUsers,
       last7Days,
     };
