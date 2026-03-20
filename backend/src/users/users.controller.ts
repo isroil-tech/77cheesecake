@@ -16,9 +16,8 @@ export class UsersController {
   async updateMe(@Req() req: any, @Body() body: { firstName?: string; lastName?: string; language?: string; phone?: string }) {
     const telegramId = req.headers['x-telegram-id'];
     if (!telegramId) return { error: 'Missing telegram ID' };
-    const user = await this.usersService.findByTelegramId(telegramId);
-    if (!user) return { error: 'User not found' };
-    return this.usersService.updateProfile(user.id, body);
+    // createOrUpdate: agar user yo'q bo'lsa yaratadi, borsa yangilaydi
+    return this.usersService.createOrUpdate(telegramId, body);
   }
 
   /** Save name + phone before first order */
@@ -26,8 +25,6 @@ export class UsersController {
   async updateProfile(@Req() req: any, @Body() body: { firstName?: string; phone?: string }) {
     const telegramId = req.headers['x-telegram-id'];
     if (!telegramId) return { error: 'Missing telegram ID' };
-    const user = await this.usersService.findByTelegramId(telegramId);
-    if (!user) return { error: 'User not found' };
-    return this.usersService.updateProfile(user.id, body);
+    return this.usersService.createOrUpdate(telegramId, body);
   }
 }
