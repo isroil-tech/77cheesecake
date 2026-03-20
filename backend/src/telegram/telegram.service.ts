@@ -182,12 +182,13 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       try {
         const telegramId = ctx.from.id.toString();
         const phone = ctx.message.contact.phone_number;
+        const username = ctx.from.username || undefined;
         this.logger.log(`Contact received from ${telegramId}: ${phone}`);
 
         const state = this.userStates.get(ctx.from.id);
         const lang = state?.language || 'uz';
 
-        await this.usersService.createOrUpdate(telegramId, { phone });
+        await this.usersService.createOrUpdate(telegramId, { phone, username });
 
         await ctx.reply(
           this.i18n.t(lang, 'phoneReceived') + '\n\n' + this.i18n.t(lang, 'enterName'),
@@ -276,6 +277,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   }
 
   async sendOrderNotification(telegramId: string, lang: string, orderNumber: number) {
+    // Don't send to guest IDs or invalid IDs
+    if (!telegramId || telegramId.startsWith('guest-') || isNaN(Number(telegramId))) return;
     try {
       await this.bot.telegram.sendMessage(
         telegramId,

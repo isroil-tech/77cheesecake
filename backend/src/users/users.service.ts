@@ -14,6 +14,7 @@ export class UsersService {
   }
 
   async createOrUpdate(telegramId: string, data: {
+    username?: string;
     phone?: string;
     firstName?: string;
     lastName?: string;

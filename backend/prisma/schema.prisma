@@ -9,6 +9,7 @@ datasource db {
 model User {
   id         String   @id @default(uuid())
   telegramId String   @unique @map("telegram_id")
+  username   String?  @map("username")
   phone      String?
   firstName  String?  @map("first_name")
   lastName   String?  @map("last_name")
@@ -100,18 +101,20 @@ model CartItem {
 }
 
 model Order {
-  id           String   @id @default(uuid())
-  orderNumber  Int      @default(autoincrement()) @map("order_number")
-  userId       String   @map("user_id")
+  id                String   @id @default(uuid())
+  orderNumber       Int      @default(autoincrement()) @map("order_number")
+  userId            String   @map("user_id")
   status            String   @default("pending_payment")
-  deliveryType      String   @map("delivery_type") // delivery | pickup
+  deliveryType      String   @map("delivery_type")
   address           String?
   latitude          Float?
   longitude         Float?
   comment           String?
-  paymentType       String?  @map("payment_type") // cash | card
+  extraPhone        String?  @map("extra_phone")
+  paymentType       String?  @map("payment_type")
   paymentScreenshot String?  @map("payment_screenshot")
   totalAmount       Decimal  @db.Decimal(10, 2) @map("total_amount")
+  boxFee            Decimal  @default(5000) @db.Decimal(10, 2) @map("box_fee")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 

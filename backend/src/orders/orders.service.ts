@@ -15,6 +15,7 @@ export class OrdersService {
     latitude?: number;
     longitude?: number;
     comment?: string;
+    extraPhone?: string;
     items?: Array<{
       productId: string;
       name: { uz: string; ru: string };
@@ -78,6 +79,8 @@ export class OrdersService {
           latitude: data.latitude,
           longitude: data.longitude,
           comment: data.comment,
+          extraPhone: data.extraPhone,
+          boxFee: 5000,
           totalAmount: grandTotal,
           items: {
             create: orderItems,

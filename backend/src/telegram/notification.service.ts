@@ -51,23 +51,30 @@ export class NotificationService {
       return `${idx + 1}. ${name} × ${item.quantity} = ${totalPrice} сум`;
     }).join('\n');
 
+    const usernameLine = order.user?.username ? `🔗 @${order.user.username}` : '';
+    const extraPhoneLine = order.extraPhone ? `📱 ${isRu ? 'Доп. тел' : "Qo'sh. tel"}: ${order.extraPhone}` : '';
+    const boxFee = Number(order.boxFee || 5000);
+
     const message = [
       `🧾 <b>${isRu ? 'Заказ' : 'Buyurtma'} #${String(order.orderNumber).padStart(4, '0')}</b>`,
       '',
       `👤 ${isRu ? 'Имя' : 'Ism'}: ${order.user?.firstName || '-'} ${order.user?.lastName || ''}`.trim(),
       `📱 ${isRu ? 'Тел' : 'Tel'}: ${order.user?.phone || '-'}`,
+      usernameLine,
+      extraPhoneLine,
       `🌐 ${isRu ? 'Язык' : 'Til'}: ${languageLabel}`,
       '',
       deliveryLabel,
       order.address ? `📍 ${isRu ? 'Адрес' : 'Manzil'}: ${order.address}` : '',
       order.latitude ? `📍 GPS: ${order.latitude}, ${order.longitude}` : '',
       '',
-      `💰 ${isRu ? 'Оплата' : 'To\'lov'}: ${paymentLabel}`,
+      `💰 ${isRu ? 'Оплата' : "To'lov"}: ${paymentLabel}`,
       '',
       `📦 ${isRu ? 'Товары' : 'Mahsulotlar'}:`,
       itemLines,
       '',
-      `💰 ${isRu ? 'Итого' : 'Jami'}: <b>${this.formatPrice(order.totalAmount)} сум</b>`,
+      `📦 ${isRu ? 'Упаковка' : 'Qadoq'}: ${this.formatPrice(boxFee)} сум`,
+      `💰 ${isRu ? 'Итого' : 'Jami'}: <b>${this.formatPrice(Number(order.totalAmount) + boxFee)} сум</b>`,
       order.comment ? `\n💬 ${isRu ? 'Комментарий' : 'Izoh'}: ${order.comment}` : '',
       '',
       `🕐 ${new Date(order.createdAt).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}`,
