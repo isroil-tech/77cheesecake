@@ -166,4 +166,75 @@ export class OrdersService {
       include: { user: true },
     });
   }
+
+  async getAdminStats() {
+    const allOrders = await this.prisma.order.findMany({
+      include: { items: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const todayOrders = allOrders.filter(o => new Date(o.createdAt) >= todayStart);
+
+    // Revenue (exclude cancelled & pending_payment)
+    const validStatuses = ['new', 'preparing', 'ready', 'delivered'];
+    const totalRevenue = allOrders
+      .filter(o => validStatuses.includes(o.status))
+      .reduce((s, o) => s + Number(o.totalAmount), 0);
+    const todayRevenue = todayOrders
+      .filter(o => validStatuses.includes(o.status))
+      .reduce((s, o) => s + Number(o.totalAmount), 0);
+
+    // Status counts
+    const statusCounts: Record<string, number> = {};
+    for (const o of allOrders) {
+      statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+    }
+
+    // Last 7 days revenue
+    const last7Days: { date: string; revenue: number; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+      const dayOrders = allOrders.filter(o => {
+        const t = new Date(o.createdAt);
+        return t >= dayStart && t < dayEnd;
+      });
+      last7Days.push({
+        date: dayStart.toISOString().slice(0, 10),
+        revenue: dayOrders
+          .filter(o => validStatuses.includes(o.status))
+          .reduce((s, o) => s + Number(o.totalAmount), 0),
+        count: dayOrders.length,
+      });
+    }
+
+    // Top 5 products
+    const productCount: Record<string, { name: string; count: number; revenue: number }> = {};
+    for (const o of allOrders) {
+      for (const item of o.items) {
+        const key = item.productNameUz;
+        if (!productCount[key]) productCount[key] = { name: key, count: 0, revenue: 0 };
+        productCount[key].count += item.quantity;
+        productCount[key].revenue += Number(item.totalPrice);
+      }
+    }
+    const topProducts = Object.values(productCount)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return {
+      totalOrders: allOrders.length,
+      todayOrders: todayOrders.length,
+      totalRevenue,
+      todayRevenue,
+      statusCounts,
+      last7Days,
+      topProducts,
+    };
+  }
 }

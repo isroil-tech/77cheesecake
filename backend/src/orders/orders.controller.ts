@@ -4,7 +4,7 @@ import { UsersService } from '../users/users.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { ConfigService } from '@nestjs/config';
 
-@Controller('api/v1/orders')
+@Controller('api/v1')
 export class OrdersController {
   constructor(
     private ordersService: OrdersService,
@@ -20,19 +20,40 @@ export class OrdersController {
     return user?.id || null;
   }
 
-  private checkAdminKey(adminKey: string) {
-    const expected = this.config.get<string>('ADMIN_KEY') || 'admin123';
-    if (adminKey !== expected) throw new ForbiddenException('Invalid admin key');
+  private checkAdmin(telegramId: string) {
+    const adminIds = (this.config.get<string>('ADMIN_TELEGRAM_IDS') || '')
+      .split(',').map(id => id.trim()).filter(Boolean);
+    if (!adminIds.includes(telegramId)) {
+      throw new ForbiddenException('Access denied');
+    }
+  }
+
+  /** Admin: verify if user is admin */
+  @Get('admin/verify')
+  async verifyAdmin(@Headers('x-telegram-id') telegramId: string) {
+    try {
+      this.checkAdmin(telegramId);
+      return { isAdmin: true };
+    } catch {
+      return { isAdmin: false };
+    }
   }
 
   /** Admin: get ALL orders */
   @Get('admin/all')
-  async getAllOrders(@Headers('x-admin-key') adminKey: string) {
-    this.checkAdminKey(adminKey);
+  async getAllOrders(@Headers('x-telegram-id') telegramId: string) {
+    this.checkAdmin(telegramId);
     return this.ordersService.getAllOrders();
   }
 
-  @Post()
+  /** Admin: full statistics */
+  @Get('admin/stats')
+  async getAdminStats(@Headers('x-telegram-id') telegramId: string) {
+    this.checkAdmin(telegramId);
+    return this.ordersService.getAdminStats();
+  }
+
+  @Post('orders')
   async createOrder(
     @Req() req: any,
     @Body() body: {
@@ -66,7 +87,7 @@ export class OrdersController {
     return order;
   }
 
-  @Post(':id/payment')
+  @Post('orders/:id/payment')
   async confirmPayment(
     @Req() req: any,
     @Param('id') id: string,
@@ -90,19 +111,19 @@ export class OrdersController {
     return order;
   }
 
-  @Get()
+  @Get('orders')
   async getOrders(@Req() req: any) {
     const userId = await this.getUserId(req);
     if (!userId) return { error: 'Unauthorized' };
     return this.ordersService.getOrdersByUser(userId);
   }
 
-  @Get(':id')
+  @Get('orders/:id')
   async getOrder(@Param('id') id: string) {
     return this.ordersService.getOrderById(id);
   }
 
-  @Patch(':id/status')
+  @Patch('orders/:id/status')
   async updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
     const order = await this.ordersService.updateOrderStatus(id, body.status);
 

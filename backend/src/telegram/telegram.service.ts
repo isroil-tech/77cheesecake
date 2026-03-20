@@ -92,6 +92,32 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
     });
 
+    // /admin
+    this.bot.command('admin', async (ctx) => {
+      try {
+        const telegramId = ctx.from.id.toString();
+        const adminIds = (this.config.get<string>('ADMIN_TELEGRAM_IDS') || '')
+          .split(',').map(id => id.trim()).filter(Boolean);
+
+        if (!adminIds.includes(telegramId)) {
+          await ctx.reply('❌ Siz admin emassiz.');
+          return;
+        }
+
+        const miniAppUrl = this.config.get<string>('MINI_APP_URL') || '';
+        const adminUrl = miniAppUrl.replace(/\/$/, '') + '/admin/';
+
+        await ctx.reply(
+          '🔐 Admin panel:',
+          Markup.inlineKeyboard([
+            [Markup.button.webApp('⚙️ Admin Panelni Ochish', adminUrl)],
+          ]),
+        );
+      } catch (e: any) {
+        this.logger.error('admin command error:', e.message);
+      }
+    });
+
     // /start
     this.bot.start(async (ctx) => {
       try {

@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>77Cheesecake — Admin Panel</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
       --bg: #0f0f12;
@@ -18,190 +19,231 @@
       --warning: #fbbf24;
       --danger: #f87171;
       --info: #60a5fa;
+      --purple: #c4b5fd;
       --radius: 12px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
 
-    /* ── AUTH ── */
-    #auth-screen {
+    /* ── ERROR ── */
+    #error-screen {
+      display: none; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px; text-align: center;
+    }
+    #error-screen.show { display: flex; }
+    .error-icon { font-size: 48px; margin-bottom: 16px; }
+    .error-text { color: var(--danger); font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .error-sub  { color: var(--muted); font-size: 13px; }
+
+    /* ── LOADING ── */
+    #loading-screen {
       display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; padding: 24px;
+      min-height: 100vh; flex-direction: column; gap: 16px;
     }
-    .auth-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 40px 36px; width: 100%; max-width: 360px;
-      text-align: center;
-    }
-    .auth-logo { font-size: 36px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
-    .auth-sub  { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
-    .auth-input {
-      width: 100%; padding: 14px 16px; border-radius: 10px;
-      background: var(--surface); border: 1px solid var(--border);
-      color: var(--text); font-size: 15px; outline: none; margin-bottom: 14px;
-      transition: border-color .2s;
-    }
-    .auth-input:focus { border-color: var(--primary); }
-    .auth-btn {
-      width: 100%; padding: 14px; border-radius: 10px; border: none;
-      background: var(--primary); color: #1a0610; font-size: 15px;
-      font-weight: 700; cursor: pointer; transition: background .2s;
-    }
-    .auth-btn:hover { background: var(--primary-dark); }
-    .auth-error { color: var(--danger); font-size: 13px; margin-top: 10px; }
+    .spinner-lg { border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin .7s linear infinite; }
+    .loading-text { color: var(--muted); font-size: 14px; }
 
     /* ── APP ── */
     #app-screen { display: none; }
+    #app-screen.show { display: block; }
     .topbar {
       background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 0 24px; height: 56px; display: flex; align-items: center;
+      padding: 0 20px; height: 52px; display: flex; align-items: center;
       justify-content: space-between; position: sticky; top: 0; z-index: 10;
     }
-    .topbar-title { font-size: 17px; font-weight: 700; color: var(--primary); }
-    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .topbar-title { font-size: 16px; font-weight: 700; color: var(--primary); }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
     .topbar-refresh {
       background: transparent; border: 1px solid var(--border); color: var(--muted);
-      padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer;
-      transition: all .2s;
+      padding: 5px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; transition: all .2s;
     }
     .topbar-refresh:hover { border-color: var(--primary); color: var(--primary); }
-    .topbar-logout {
-      background: transparent; border: none; color: var(--muted);
-      font-size: 13px; cursor: pointer;
+    .refresh-time { font-size: 11px; color: var(--muted); }
+
+    .main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+
+    /* ── STATS GRID ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px; margin-bottom: 24px;
     }
-
-    .main { padding: 24px; max-width: 1200px; margin: 0 auto; }
-
-    /* ── STATS ── */
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
     .stat-card {
-      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 18px 20px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px;
     }
-    .stat-value { font-size: 28px; font-weight: 800; color: var(--primary); }
-    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .stat-value { font-size: 26px; font-weight: 800; color: var(--primary); line-height: 1; }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 5px; }
+    .stat-sub   { font-size: 12px; color: var(--success); margin-top: 3px; }
+
+    /* ── 2-COLUMN SECTION ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+    .section-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px;
+    }
+    .section-title { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 14px; }
+
+    /* ── STATUS BARS ── */
+    .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .status-label-sm { font-size: 12px; width: 110px; flex-shrink: 0; }
+    .status-bar-track { flex: 1; background: var(--border); border-radius: 4px; height: 6px; }
+    .status-bar-fill  { height: 6px; border-radius: 4px; transition: width .5s; }
+    .status-count-sm  { font-size: 12px; font-weight: 700; width: 28px; text-align: right; color: var(--text); }
+
+    /* ── TOP PRODUCTS ── */
+    .product-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .product-row:last-child { border-bottom: none; }
+    .product-rank { font-size: 11px; color: var(--muted); width: 20px; }
+    .product-name { font-size: 13px; flex: 1; margin: 0 10px; }
+    .product-count { font-size: 12px; color: var(--primary); font-weight: 700; }
+
+    /* ── 7-DAY CHART ── */
+    .chart-wrap { overflow: hidden; }
+    .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 90px; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--primary); opacity: .8; min-height: 4px; transition: height .5s; cursor: default; }
+    .bar:hover { opacity: 1; }
+    .bar-label { font-size: 9px; color: var(--muted); white-space: nowrap; }
 
     /* ── TABS ── */
-    .tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
     .tab {
-      padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
-      background: transparent; color: var(--muted); font-size: 13px; cursor: pointer;
-      transition: all .2s;
+      padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: all .2s;
     }
-    .tab.active { background: var(--primary); color: #1a0610; border-color: var(--primary); font-weight: 600; }
+    .tab.active { background: var(--primary); color: #1a0610; border-color: var(--primary); font-weight: 700; }
 
-    /* ── ORDERS TABLE ── */
-    .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 24px; }
     table { width: 100%; border-collapse: collapse; }
-    th {
-      background: var(--surface); text-align: left; padding: 12px 16px;
-      font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .05em;
-      border-bottom: 1px solid var(--border); white-space: nowrap;
-    }
-    td {
-      padding: 14px 16px; border-bottom: 1px solid var(--border);
-      font-size: 13px; vertical-align: top;
-    }
+    th { background: var(--surface); text-align: left; padding: 11px 14px; font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .05em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--surface); }
+    tr:hover td { background: rgba(255,255,255,.02); }
 
-    .badge {
-      display: inline-block; padding: 3px 10px; border-radius: 20px;
-      font-size: 11px; font-weight: 600;
-    }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; }
     .badge-pending_payment { background: #3a2a10; color: var(--warning); }
     .badge-new            { background: #1a2a3a; color: var(--info); }
-    .badge-preparing      { background: #2a1a3a; color: #c4b5fd; }
+    .badge-preparing      { background: #2a1a3a; color: var(--purple); }
     .badge-ready          { background: #1a3a2a; color: var(--success); }
     .badge-delivered      { background: #1a3a1a; color: var(--success); }
     .badge-cancelled      { background: #3a1a1a; color: var(--danger); }
 
     .status-select {
       background: var(--surface); border: 1px solid var(--border);
-      color: var(--text); border-radius: 8px; padding: 6px 10px;
-      font-size: 12px; cursor: pointer; outline: none;
+      color: var(--text); border-radius: 8px; padding: 5px 9px;
+      font-size: 11px; cursor: pointer; outline: none;
     }
     .status-select:focus { border-color: var(--primary); }
 
-    .order-num { font-weight: 700; color: var(--primary); }
-    .user-name { font-weight: 600; }
-    .user-phone { color: var(--muted); font-size: 12px; }
-    .items-list { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .total { font-weight: 700; }
+    .order-num  { font-weight: 700; color: var(--primary); white-space: nowrap; }
+    .user-name  { font-weight: 600; }
+    .user-phone { color: var(--muted); font-size: 11px; }
+    .items-list { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .total      { font-weight: 700; white-space: nowrap; }
 
-    /* ── SETTINGS PANEL ── */
-    .settings-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 24px; margin-top: 28px;
-    }
-    .settings-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+    /* ── SETTINGS ── */
+    .settings-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .settings-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; }
     .settings-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .settings-input {
-      flex: 1; min-width: 200px; padding: 12px 14px; border-radius: 10px;
-      background: var(--surface); border: 1px solid var(--border);
-      color: var(--text); font-size: 14px; outline: none;
-    }
+    .settings-input { flex: 1; min-width: 200px; padding: 11px 13px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 13px; outline: none; }
     .settings-input:focus { border-color: var(--primary); }
-    .settings-btn {
-      padding: 12px 20px; border-radius: 10px; border: none;
-      background: var(--primary); color: #1a0610; font-size: 14px;
-      font-weight: 700; cursor: pointer; white-space: nowrap;
-    }
-    .settings-hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
-    .settings-success { color: var(--success); font-size: 13px; margin-top: 8px; }
+    .settings-btn { padding: 11px 18px; border-radius: 10px; border: none; background: var(--primary); color: #1a0610; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .settings-hint { font-size: 11px; color: var(--muted); margin-top: 7px; }
+    .settings-success { color: var(--success); font-size: 12px; margin-top: 7px; }
 
-    /* ── EMPTY ── */
-    .empty { text-align: center; padding: 60px 24px; color: var(--muted); font-size: 14px; }
-    .spinner { border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin .6s linear infinite; margin: 40px auto; }
+    .empty { text-align: center; padding: 50px 24px; color: var(--muted); font-size: 14px; }
+    .spinner { border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; width: 22px; height: 22px; animation: spin .6s linear infinite; margin: 30px auto; }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-<!-- AUTH SCREEN -->
-<div id="auth-screen">
-  <div class="auth-card">
-    <div class="auth-logo">🍰</div>
-    <div style="font-size:22px;font-weight:800;margin-bottom:4px">77Cheesecake</div>
-    <div class="auth-sub">Admin panel — Kirish</div>
-    <input id="auth-key" class="auth-input" type="password" placeholder="Admin kalit so'zi" autofocus/>
-    <button class="auth-btn" onclick="login()">Kirish</button>
-    <div id="auth-error" class="auth-error"></div>
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="spinner-lg"></div>
+  <div class="loading-text">Yuklanmoqda...</div>
+</div>
+
+<!-- ERROR -->
+<div id="error-screen">
+  <div>
+    <div class="error-icon">🚫</div>
+    <div class="error-text" id="error-msg">Kirish taqiqlangan</div>
+    <div class="error-sub">Bu sahifa faqat adminlar uchun</div>
   </div>
 </div>
 
-<!-- APP SCREEN -->
+<!-- APP -->
 <div id="app-screen">
   <div class="topbar">
     <span class="topbar-title">🍰 Admin Panel</span>
     <div class="topbar-right">
-      <span id="last-refresh" style="font-size:12px;color:var(--muted)"></span>
-      <button class="topbar-refresh" onclick="loadOrders()">⟳ Yangilash</button>
-      <button class="topbar-logout" onclick="logout()">Chiqish</button>
+      <span class="refresh-time" id="last-refresh"></span>
+      <button class="topbar-refresh" onclick="refresh()">⟳ Yangilash</button>
     </div>
   </div>
 
   <div class="main">
+
     <!-- Stats -->
-    <div class="stats">
-      <div class="stat-card"><div class="stat-value" id="stat-total">—</div><div class="stat-label">Jami buyurtmalar</div></div>
-      <div class="stat-card"><div class="stat-value" id="stat-today">—</div><div class="stat-label">Bugungi buyurtmalar</div></div>
-      <div class="stat-card"><div class="stat-value" id="stat-new">—</div><div class="stat-label">Yangi (kutilmoqda)</div></div>
-      <div class="stat-card"><div class="stat-value" id="stat-revenue">—</div><div class="stat-label">Bugungi daromad</div></div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="s-total">—</div>
+        <div class="stat-label">Jami buyurtmalar</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="s-today">—</div>
+        <div class="stat-label">Bugungi buyurtmalar</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="s-active">—</div>
+        <div class="stat-label">Faol (new+preparing)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="s-revenue">—</div>
+        <div class="stat-label">Bugungi daromad</div>
+        <div class="stat-sub" id="s-total-rev"></div>
+      </div>
+    </div>
+
+    <!-- Charts & Top products -->
+    <div class="two-col">
+      <!-- 7-day chart -->
+      <div class="section-card">
+        <div class="section-title">📈 Oxirgi 7 kun daromadi</div>
+        <div class="chart-wrap">
+          <div class="bar-chart" id="bar-chart"></div>
+        </div>
+      </div>
+      <!-- top products -->
+      <div class="section-card">
+        <div class="section-title">🏆 Top mahsulotlar</div>
+        <div id="top-products"></div>
+      </div>
+    </div>
+
+    <!-- Status breakdown -->
+    <div class="section-card" style="margin-bottom:24px">
+      <div class="section-title">📊 Statuslar bo'yicha</div>
+      <div id="status-bars"></div>
     </div>
 
     <!-- Filter tabs -->
     <div class="tabs" id="filter-tabs">
-      <button class="tab active" onclick="setFilter('all', this)">Hammasi</button>
-      <button class="tab" onclick="setFilter('pending_payment', this)">To'lov kutilmoqda</button>
-      <button class="tab" onclick="setFilter('new', this)">Yangi</button>
-      <button class="tab" onclick="setFilter('preparing', this)">Tayyorlanmoqda</button>
-      <button class="tab" onclick="setFilter('ready', this)">Tayyor</button>
-      <button class="tab" onclick="setFilter('delivered', this)">Yetkazildi</button>
-      <button class="tab" onclick="setFilter('cancelled', this)">Bekor qilindi</button>
+      <button class="tab active" onclick="setFilter('all',this)">Hammasi</button>
+      <button class="tab" onclick="setFilter('pending_payment',this)">To'lov</button>
+      <button class="tab" onclick="setFilter('new',this)">Yangi</button>
+      <button class="tab" onclick="setFilter('preparing',this)">Tayyorlanmoqda</button>
+      <button class="tab" onclick="setFilter('ready',this)">Tayyor</button>
+      <button class="tab" onclick="setFilter('delivered',this)">Yetkazildi</button>
+      <button class="tab" onclick="setFilter('cancelled',this)">Bekor</button>
     </div>
 
-    <!-- Table -->
+    <!-- Orders table -->
     <div class="table-wrap" id="table-wrap">
       <div class="spinner"></div>
     </div>
@@ -210,20 +252,20 @@
     <div class="settings-card">
       <div class="settings-title">⚙️ Telegram Guruh Sozlamalari</div>
       <div class="settings-row">
-        <input id="group-chat-id" class="settings-input" type="text" placeholder="Guruh Chat ID (masalan: -1001234567890)"/>
+        <input id="group-chat-id" class="settings-input" type="text" placeholder="Guruh Chat ID (-1001234567890)"/>
         <button class="settings-btn" onclick="saveGroupId()">Saqlash</button>
       </div>
-      <div class="settings-hint">Guruh Chat ID ni olish uchun guruhga botni qo'shing va /chatid yuboring</div>
+      <div class="settings-hint">Botni guruhga qo'shing va /chatid yuboring</div>
       <div id="settings-msg"></div>
     </div>
   </div>
 </div>
 
 <script>
-  let adminKey = '';
+  let tgId = '';
   let allOrders = [];
   let currentFilter = 'all';
-  let autoRefreshTimer = null;
+  let autoTimer = null;
 
   const STATUS_LABELS = {
     pending_payment: "⏳ To'lov kutilmoqda",
@@ -233,72 +275,133 @@
     delivered: '📦 Yetkazildi',
     cancelled: '❌ Bekor qilindi',
   };
+  const STATUS_COLORS = {
+    pending_payment: '#fbbf24',
+    new: '#60a5fa',
+    preparing: '#c4b5fd',
+    ready: '#4ade80',
+    delivered: '#22c55e',
+    cancelled: '#f87171',
+  };
 
-  // ── AUTH ──
-  function login() {
-    const key = document.getElementById('auth-key').value.trim();
-    if (!key) return;
-    adminKey = key;
-    document.getElementById('auth-error').textContent = '';
-    loadOrders(true);
-  }
-  document.getElementById('auth-key').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  // ── INIT ──
+  window.addEventListener('DOMContentLoaded', async () => {
+    window.Telegram?.WebApp?.expand();
+    window.Telegram?.WebApp?.ready();
 
-  function logout() {
-    adminKey = '';
-    clearInterval(autoRefreshTimer);
-    document.getElementById('auth-screen').style.display = 'flex';
-    document.getElementById('app-screen').style.display = 'none';
-  }
+    const user = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    if (user?.id) {
+      tgId = String(user.id);
+    } else {
+      // Dev fallback — remove in production
+      tgId = new URLSearchParams(location.search).get('tid') || '';
+    }
 
-  // ── LOAD ORDERS ──
-  async function loadOrders(fromLogin = false) {
+    if (!tgId) {
+      showError('Telegram orqali kiring');
+      return;
+    }
+
+    // Verify admin
     try {
-      const res = await fetch('/api/v1/orders/admin/all', {
-        headers: { 'x-admin-key': adminKey }
-      });
-      if (res.status === 403) {
-        if (fromLogin) document.getElementById('auth-error').textContent = 'Noto\'g\'ri kalit so\'zi!';
+      const res = await fetch('/api/v1/admin/verify', { headers: { 'x-telegram-id': tgId } });
+      const data = await res.json();
+      if (!data.isAdmin) {
+        showError('Siz admin emassiz');
         return;
       }
-      allOrders = await res.json();
-
-      if (fromLogin) {
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('app-screen').style.display = 'block';
-        loadSettings();
-        startAutoRefresh();
-      }
-
-      updateStats();
-      renderTable();
-      document.getElementById('last-refresh').textContent = 'Yangilandi: ' + new Date().toLocaleTimeString('uz-UZ');
-    } catch (e) {
-      console.error(e);
+    } catch {
+      showError('Server bilan bog\'lanib bo\'lmadi');
+      return;
     }
+
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('app-screen').classList.add('show');
+    await refresh();
+    autoTimer = setInterval(refresh, 30000);
+  });
+
+  function showError(msg) {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('error-msg').textContent = msg;
+    document.getElementById('error-screen').classList.add('show');
   }
 
-  function startAutoRefresh() {
-    clearInterval(autoRefreshTimer);
-    autoRefreshTimer = setInterval(() => loadOrders(), 30000);
+  // ── REFRESH ──
+  async function refresh() {
+    await Promise.all([loadStats(), loadOrders()]);
+    document.getElementById('last-refresh').textContent =
+      new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
   }
 
   // ── STATS ──
-  function updateStats() {
-    const today = new Date().toDateString();
-    const todayOrders = allOrders.filter(o => new Date(o.createdAt).toDateString() === today);
-    const newOrders = allOrders.filter(o => o.status === 'new' || o.status === 'preparing');
-    const revenue = todayOrders
-      .filter(o => o.status !== 'cancelled' && o.status !== 'pending_payment')
-      .reduce((sum, o) => sum + Number(o.totalAmount), 0);
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/v1/admin/stats', { headers: { 'x-telegram-id': tgId } });
+      const d = await res.json();
 
-    document.getElementById('stat-total').textContent = allOrders.length;
-    document.getElementById('stat-today').textContent = todayOrders.length;
-    document.getElementById('stat-new').textContent = newOrders.length;
-    document.getElementById('stat-revenue').textContent = fmt(revenue) + ' so\'m';
+      document.getElementById('s-total').textContent = d.totalOrders;
+      document.getElementById('s-today').textContent = d.todayOrders;
+      document.getElementById('s-active').textContent =
+        (d.statusCounts['new'] || 0) + (d.statusCounts['preparing'] || 0);
+      document.getElementById('s-revenue').textContent = fmt(d.todayRevenue) + ' so\'m';
+      document.getElementById('s-total-rev').textContent = 'Jami: ' + fmt(d.totalRevenue) + ' so\'m';
+
+      renderChart(d.last7Days);
+      renderTopProducts(d.topProducts);
+      renderStatusBars(d.statusCounts, d.totalOrders);
+    } catch (e) { console.error(e); }
   }
 
-  // ── FILTER ──
+  function renderChart(days) {
+    const max = Math.max(...days.map(d => d.revenue), 1);
+    const wrap = document.getElementById('bar-chart');
+    wrap.innerHTML = days.map(d => {
+      const h = Math.max(Math.round((d.revenue / max) * 80), d.count > 0 ? 6 : 2);
+      const date = d.date.slice(5); // MM-DD
+      return `<div class="bar-col">
+        <div class="bar" style="height:${h}px" title="${fmt(d.revenue)} so'm · ${d.count} ta"></div>
+        <div class="bar-label">${date}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderTopProducts(products) {
+    const el = document.getElementById('top-products');
+    if (!products.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px">Ma\'lumot yo\'q</div>'; return; }
+    el.innerHTML = products.map((p, i) => `
+      <div class="product-row">
+        <span class="product-rank">${i + 1}.</span>
+        <span class="product-name">${p.name}</span>
+        <span class="product-count">${p.count} ta</span>
+      </div>`).join('');
+  }
+
+  function renderStatusBars(counts, total) {
+    const el = document.getElementById('status-bars');
+    const statuses = Object.keys(STATUS_LABELS);
+    el.innerHTML = statuses.map(s => {
+      const n = counts[s] || 0;
+      const pct = total > 0 ? Math.round((n / total) * 100) : 0;
+      return `<div class="status-row">
+        <span class="status-label-sm" style="color:${STATUS_COLORS[s]}">${STATUS_LABELS[s]}</span>
+        <div class="status-bar-track">
+          <div class="status-bar-fill" style="width:${pct}%;background:${STATUS_COLORS[s]}"></div>
+        </div>
+        <span class="status-count-sm">${n}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ── ORDERS ──
+  async function loadOrders() {
+    try {
+      const res = await fetch('/api/v1/admin/all', { headers: { 'x-telegram-id': tgId } });
+      allOrders = await res.json();
+      renderTable();
+    } catch (e) { console.error(e); }
+  }
+
   function setFilter(status, btn) {
     currentFilter = status;
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -306,86 +409,61 @@
     renderTable();
   }
 
-  // ── RENDER ──
   function renderTable() {
     const filtered = currentFilter === 'all' ? allOrders : allOrders.filter(o => o.status === currentFilter);
     const wrap = document.getElementById('table-wrap');
 
-    if (filtered.length === 0) {
+    if (!filtered.length) {
       wrap.innerHTML = '<div class="empty">Buyurtmalar topilmadi</div>';
       return;
     }
 
-    wrap.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Mijoz</th>
-            <th>Sana</th>
-            <th>Yetkazish</th>
-            <th>Manzil</th>
-            <th>Mahsulotlar</th>
-            <th>Jami</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filtered.map(order => `
-            <tr>
-              <td class="order-num">#${String(order.orderNumber).padStart(4,'0')}</td>
-              <td>
-                <div class="user-name">${order.user?.firstName || '—'} ${order.user?.lastName || ''}</div>
-                <div class="user-phone">${order.user?.phone || order.user?.telegramId || '—'}</div>
-              </td>
-              <td style="white-space:nowrap;color:var(--muted)">${formatDate(order.createdAt)}</td>
-              <td>${order.deliveryType === 'delivery' ? '🚗 Yetkazish' : '🏪 Olib ketish'}</td>
-              <td style="max-width:160px;font-size:12px;color:var(--muted)">${order.address || '—'}</td>
-              <td>
-                <div class="items-list">${(order.items || []).map(i =>
-                  `${i.productNameUz} ×${i.quantity}`
-                ).join('<br>')}</div>
-              </td>
-              <td class="total">${fmt(order.totalAmount)} so'm</td>
-              <td>
-                <div style="margin-bottom:6px"><span class="badge badge-${order.status}">${STATUS_LABELS[order.status] || order.status}</span></div>
-                <select class="status-select" onchange="changeStatus('${order.id}', this.value)" ${order.status === 'cancelled' || order.status === 'delivered' ? 'disabled' : ''}>
-                  ${Object.entries(STATUS_LABELS).map(([val, label]) =>
-                    `<option value="${val}" ${order.status === val ? 'selected' : ''}>${label}</option>`
-                  ).join('')}
-                </select>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>`;
+    wrap.innerHTML = `<table>
+      <thead><tr>
+        <th>#</th><th>Mijoz</th><th>Sana</th><th>Tur</th>
+        <th>Manzil</th><th>Mahsulotlar</th><th>Jami</th><th>Status</th>
+      </tr></thead>
+      <tbody>${filtered.map(o => `
+        <tr>
+          <td class="order-num">#${String(o.orderNumber).padStart(4,'0')}</td>
+          <td>
+            <div class="user-name">${o.user?.firstName || '—'} ${o.user?.lastName || ''}</div>
+            <div class="user-phone">${o.user?.phone || o.user?.telegramId || '—'}</div>
+          </td>
+          <td style="white-space:nowrap;color:var(--muted);font-size:12px">${fmtDate(o.createdAt)}</td>
+          <td style="font-size:12px">${o.deliveryType === 'delivery' ? '🚗 Yetkazish' : '🏪 Olib ketish'}</td>
+          <td style="max-width:140px;font-size:11px;color:var(--muted)">${o.address || '—'}</td>
+          <td><div class="items-list">${(o.items||[]).map(i=>`${i.productNameUz} ×${i.quantity}`).join('<br>')}</div></td>
+          <td class="total">${fmt(o.totalAmount)}</td>
+          <td>
+            <div style="margin-bottom:5px"><span class="badge badge-${o.status}">${STATUS_LABELS[o.status]||o.status}</span></div>
+            <select class="status-select" onchange="changeStatus('${o.id}',this.value)" ${o.status==='cancelled'||o.status==='delivered'?'disabled':''}>
+              ${Object.entries(STATUS_LABELS).map(([v,l])=>`<option value="${v}" ${o.status===v?'selected':''}>${l}</option>`).join('')}
+            </select>
+          </td>
+        </tr>`).join('')}
+      </tbody></table>`;
   }
 
-  // ── STATUS UPDATE ──
-  async function changeStatus(orderId, status) {
+  async function changeStatus(id, status) {
     try {
-      await fetch(`/api/v1/orders/${orderId}/status`, {
+      await fetch(`/api/v1/orders/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+        headers: { 'Content-Type': 'application/json', 'x-telegram-id': tgId },
         body: JSON.stringify({ status }),
       });
-      await loadOrders();
-    } catch (e) {
-      alert('Xatolik: ' + e.message);
-    }
+      await refresh();
+    } catch (e) { alert('Xatolik: ' + e.message); }
   }
 
   // ── SETTINGS ──
   async function loadSettings() {
     try {
       const res = await fetch('/api/v1/settings');
-      const data = await res.json();
-      if (data.CAFE_GROUP_CHAT_ID) {
-        document.getElementById('group-chat-id').value = data.CAFE_GROUP_CHAT_ID;
-      }
-    } catch (e) {}
+      const d = await res.json();
+      if (d.CAFE_GROUP_CHAT_ID) document.getElementById('group-chat-id').value = d.CAFE_GROUP_CHAT_ID;
+    } catch {}
   }
-
   async function saveGroupId() {
     const val = document.getElementById('group-chat-id').value.trim();
     if (!val) return;
@@ -397,7 +475,7 @@
         body: JSON.stringify({ CAFE_GROUP_CHAT_ID: val }),
       });
       msg.className = 'settings-success';
-      msg.textContent = '✅ Saqlandi! Endi yangi buyurtmalar shu guruhga yuboriladi.';
+      msg.textContent = '✅ Saqlandi!';
       setTimeout(() => msg.textContent = '', 4000);
     } catch (e) {
       msg.style.color = 'var(--danger)';
@@ -406,14 +484,12 @@
   }
 
   // ── UTILS ──
-  function fmt(num) {
-    return Number(num).toLocaleString('ru-RU');
+  function fmt(n) { return Number(n).toLocaleString('ru-RU'); }
+  function fmtDate(iso) {
+    return new Date(iso).toLocaleString('uz-UZ', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   }
-  function formatDate(iso) {
-    return new Date(iso).toLocaleString('uz-UZ', {
-      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-    });
-  }
+
+  loadSettings();
 </script>
 </body>
 </html>
