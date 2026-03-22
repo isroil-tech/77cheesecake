@@ -331,6 +331,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     await this.notificationService.sendOrderToGroup(order);
   }
 
+  async sendScreenshotToGroup(order: any, screenshot: string) {
+    await this.notificationService.sendScreenshotToGroup(order, screenshot);
+  }
+
   async sendStatusUpdate(telegramId: string, lang: string, orderNumber: number, status: string) {
     const statusKey = `order${status.charAt(0).toUpperCase() + status.slice(1)}`;
     const statusText = this.i18n.t(lang, statusKey);

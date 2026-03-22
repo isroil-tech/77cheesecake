@@ -114,6 +114,23 @@ export class NotificationService {
     }
   }
 
+  async sendScreenshotToGroup(order: any, screenshot: string) {
+    const cafeGroupChatId = await this.getCafeGroupChatId();
+    if (!cafeGroupChatId) return;
+    try {
+      const base64 = screenshot.replace(/^data:image\/\w+;base64,/, '');
+      const buf = Buffer.from(base64, 'base64');
+      const orderNum = String(order.orderNumber).padStart(4, '0');
+      await this.bot.telegram.sendPhoto(
+        cafeGroupChatId,
+        { source: buf },
+        { caption: `💳 To'lov cheki — Buyurtma #${orderNum}`, parse_mode: 'HTML' },
+      );
+    } catch (e) {
+      this.logger.error('Failed to send screenshot to group', e);
+    }
+  }
+
   private formatPrice(amount: any): string {
     return Number(amount).toLocaleString('ru-RU');
   }
