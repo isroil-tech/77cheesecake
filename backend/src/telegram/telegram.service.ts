@@ -133,7 +133,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     };
 
     this.bot.action(/^pay:(.+)$/, (ctx) => handleOrderAction(ctx, 'ready', "✅ To'lov qabul qilindi"));
-    this.bot.action(/^courier:(.+)$/, (ctx) => handleOrderAction(ctx, 'ready', '🚗 Kuryerga berildi'));
     this.bot.action(/^deliver:(.+)$/, (ctx) => handleOrderAction(ctx, 'delivered', '🚚 Yetkazib berildi'));
     this.bot.action(/^cancel:(.+)$/, (ctx) => handleOrderAction(ctx, 'cancelled', '❌ Bekor qilindi'));
     this.bot.action('noop', (ctx) => ctx.answerCbQuery().catch(() => {}));

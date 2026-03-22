@@ -84,15 +84,16 @@ export class OrdersController {
   ) {
     this.checkAdmin(telegramId);
     const users = await this.usersService.getAllUsers();
+    const realUsers = users.filter(u => !u.telegramId.startsWith('guest-'));
     let sent = 0, failed = 0;
-    for (const user of users) {
+    for (const user of realUsers) {
       try {
         await this.telegramService.sendDirectMessage(user.telegramId, body.message);
         sent++;
         await new Promise(r => setTimeout(r, 50)); // Rate limit
       } catch { failed++; }
     }
-    return { sent, failed, total: users.length };
+    return { sent, failed, total: realUsers.length };
   }
 
   /** Admin: send message to specific user */
