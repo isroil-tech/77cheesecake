@@ -4,6 +4,8 @@ import {
 } from '@nestjs/common';
 import { CatalogService } from './catalog.service';
 import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Controller('api/v1')
 export class CatalogController {
@@ -16,6 +18,22 @@ export class CatalogController {
     const adminIds = (this.config.get<string>('ADMIN_TELEGRAM_IDS') || '')
       .split(',').map(id => id.trim()).filter(Boolean);
     if (!adminIds.includes(telegramId)) throw new Error('Unauthorized');
+  }
+
+  // ─── Admin: Image Upload ─────────────────────────────────────────
+  @Post('admin/upload')
+  async adminUpload(
+    @Headers('x-telegram-id') tgId: string,
+    @Body() body: { base64: string; filename?: string },
+  ) {
+    this.checkAdmin(tgId);
+    const base64 = body.base64.replace(/^data:image\/\w+;base64,/, '');
+    const ext = body.base64.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
+    const name = `${Date.now()}.${ext}`;
+    const uploadsDir = path.join(__dirname, '..', '..', '..', 'public', 'uploads');
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+    fs.writeFileSync(path.join(uploadsDir, name), Buffer.from(base64, 'base64'));
+    return { url: `/uploads/${name}` };
   }
 
   // ─── Public ──────────────────────────────────────────────────────
