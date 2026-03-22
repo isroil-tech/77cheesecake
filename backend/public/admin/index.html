@@ -661,17 +661,33 @@
     const statusEl = document.getElementById('pm-upload-status');
     const labelEl = document.getElementById('pm-upload-label');
     labelEl.textContent = file.name;
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = '⏳ Siqilmoqda...';
     const reader = new FileReader();
     reader.onload = (e) => {
-      const base64 = e.target.result;
-      // Show preview
-      const preview = document.getElementById('pm-preview');
-      preview.innerHTML = `<img src="${base64}" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-bottom:8px">`;
-      preview.style.display = 'block';
-      // Save base64 directly as imageUrl (no server upload needed)
-      document.getElementById('pm-img').value = base64;
-      statusEl.style.color = 'var(--success)';
-      statusEl.textContent = '✅ Rasm tayyor';
+      const img = new Image();
+      img.onload = () => {
+        // Resize to max 900px (width or height)
+        const MAX = 900;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL('image/jpeg', 0.65);
+        const kb = Math.round(compressed.length * 0.75 / 1024);
+        // Show preview
+        const preview = document.getElementById('pm-preview');
+        preview.innerHTML = `<img src="${compressed}" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-bottom:8px">`;
+        preview.style.display = 'block';
+        document.getElementById('pm-img').value = compressed;
+        statusEl.style.color = 'var(--success)';
+        statusEl.textContent = `✅ Tayyor (${kb} KB)`;
+      };
+      img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   }

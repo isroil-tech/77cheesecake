@@ -4,6 +4,10 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Increase JSON body limit for base64 image payloads (screenshots ~5MB → base64 ~7MB)
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.use(require('express').json({ limit: '15mb' }));
+
   // Enable CORS for Mini App
   app.enableCors({
     origin: '*',
