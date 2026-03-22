@@ -660,37 +660,20 @@
     if (!file) return;
     const statusEl = document.getElementById('pm-upload-status');
     const labelEl = document.getElementById('pm-upload-label');
-    statusEl.textContent = '⏳ Yuklanmoqda...';
     labelEl.textContent = file.name;
-    try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64 = e.target.result;
-        // Show preview immediately
-        const preview = document.getElementById('pm-preview');
-        preview.innerHTML = `<img src="${base64}" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-bottom:8px">`;
-        preview.style.display = 'block';
-        // Upload to backend
-        const res = await fetch('/api/v1/admin/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-telegram-id': tgId },
-          body: JSON.stringify({ base64 }),
-        });
-        const d = await res.json();
-        if (d.url) {
-          document.getElementById('pm-img').value = d.url;
-          statusEl.style.color = 'var(--success)';
-          statusEl.textContent = '✅ Yuklandi: ' + d.url;
-        } else {
-          statusEl.style.color = 'var(--danger)';
-          statusEl.textContent = 'Xatolik: ' + JSON.stringify(d);
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch(e) {
-      statusEl.style.color = 'var(--danger)';
-      statusEl.textContent = 'Xatolik: ' + e.message;
-    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target.result;
+      // Show preview
+      const preview = document.getElementById('pm-preview');
+      preview.innerHTML = `<img src="${base64}" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-bottom:8px">`;
+      preview.style.display = 'block';
+      // Save base64 directly as imageUrl (no server upload needed)
+      document.getElementById('pm-img').value = base64;
+      statusEl.style.color = 'var(--success)';
+      statusEl.textContent = '✅ Rasm tayyor';
+    };
+    reader.readAsDataURL(file);
   }
 
   async function saveProd() {
