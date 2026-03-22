@@ -102,14 +102,28 @@
     .broadcast-result { font-size: 13px; padding: 10px 14px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }
 
     /* MODAL */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; padding: 24px; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; padding: 24px; overflow-y:auto; }
     .modal-overlay.show { display: flex; }
-    .modal { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 400px; }
+    .modal { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 480px; max-height:90vh; overflow-y:auto; }
     .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
     .modal-sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
     .modal-textarea { width: 100%; padding: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 10px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 80px; outline: none; margin-bottom: 12px; }
     .modal-textarea:focus { border-color: var(--primary); }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .form-input { width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:13px; outline:none; margin-bottom:10px; }
+    .form-input:focus { border-color:var(--primary); }
+    .form-row { display:flex; gap:10px; }
+    .form-row .form-input { margin-bottom:0; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top:14px; }
+    .variant-row { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--surface); border-radius:8px; margin-bottom:6px; }
+    .variant-info { flex:1; font-size:12px; }
+    .variant-price { font-size:13px; font-weight:700; color:var(--primary); }
+    .prod-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:12px; }
+    .prod-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .prod-name { font-size:14px; font-weight:700; }
+    .prod-cat { font-size:11px; color:var(--muted); margin-top:2px; }
+    .prod-actions { display:flex; gap:6px; }
+    .inactive-badge { font-size:10px; padding:2px 7px; border-radius:10px; background:#3a1a1a; color:var(--danger); }
+    .active-badge { font-size:10px; padding:2px 7px; border-radius:10px; background:#1a3a2a; color:var(--success); }
 
     /* SETTINGS */
     .settings-input { flex: 1; min-width: 180px; padding: 11px 13px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 13px; outline: none; }
@@ -154,6 +168,12 @@
   </div>
 </div>
 
+<!-- MODAL: Product add/edit -->
+<div class="modal-overlay" id="prod-modal" onclick="if(event.target===this)closeProdModal()"></div>
+
+<!-- MODAL: Variant add/edit -->
+<div class="modal-overlay" id="var-modal" onclick="if(event.target===this)closeVarModal()"></div>
+
 <div id="app-screen">
   <!-- TOPBAR -->
   <div class="topbar">
@@ -169,6 +189,7 @@
     <button class="nav-tab active" onclick="showPage('orders',this)">📦 Buyurtmalar</button>
     <button class="nav-tab" onclick="showPage('stats',this)">📊 Statistika</button>
     <button class="nav-tab" onclick="showPage('users',this)">👥 Foydalanuvchilar</button>
+    <button class="nav-tab" onclick="showPage('products',this);loadProducts()">🍰 Mahsulotlar</button>
     <button class="nav-tab" onclick="showPage('settings',this)">⚙️ Sozlamalar</button>
   </div>
 
@@ -243,6 +264,15 @@
 
       <!-- Users table -->
       <div class="table-wrap" id="users-table"><div class="spinner"></div></div>
+    </div>
+
+    <!-- ══════════════ PRODUCTS PAGE ══════════════ -->
+    <div id="page-products" class="page">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:16px;font-weight:700">🍰 Mahsulotlar</div>
+        <button class="btn btn-primary" onclick="openProdModal()">+ Yangi mahsulot</button>
+      </div>
+      <div id="products-list"><div class="spinner"></div></div>
     </div>
 
     <!-- ══════════════ SETTINGS PAGE ══════════════ -->
@@ -538,6 +568,167 @@
   }
 
   loadSettings();
+
+  // ── PRODUCTS ──────────────────────────────────────────────────────
+  let allProducts = [], allCats = [], editingProdId = null, editingVarId = null;
+
+  async function loadProducts() {
+    document.getElementById('products-list').innerHTML = '<div class="spinner"></div>';
+    try {
+      const [pr, ca] = await Promise.all([
+        fetch('/api/v1/admin/catalog/products', { headers:{'x-telegram-id':tgId} }).then(r=>r.json()),
+        fetch('/api/v1/admin/catalog/categories', { headers:{'x-telegram-id':tgId} }).then(r=>r.json()),
+      ]);
+      allProducts = Array.isArray(pr) ? pr : [];
+      allCats = Array.isArray(ca) ? ca : [];
+      renderProducts();
+    } catch(e) { document.getElementById('products-list').innerHTML = '<div class="empty">Xatolik: '+e.message+'</div>'; }
+  }
+
+  function renderProducts() {
+    const el = document.getElementById('products-list');
+    if (!allProducts.length) { el.innerHTML = '<div class="empty">Mahsulotlar yo\'q. Yangi qo\'shing.</div>'; return; }
+    el.innerHTML = allProducts.map(p => `
+      <div class="prod-card">
+        <div class="prod-header">
+          <div>
+            <div class="prod-name">${p.nameUz} <span style="color:var(--muted);font-weight:400">/ ${p.nameRu}</span>
+              <span class="${p.isActive?'active-badge':'inactive-badge'}">${p.isActive?'Faol':'Nofaol'}</span>
+            </div>
+            <div class="prod-cat">${p.category?.nameUz||''}</div>
+          </div>
+          <div class="prod-actions">
+            <button class="btn-sm" onclick="openProdModal('${p.id}')">✏️ Tahrir</button>
+            <button class="btn-sm" style="color:var(--${p.isActive?'danger':'success'})" onclick="toggleProduct('${p.id}',${!p.isActive})">${p.isActive?'🔴 O\'chir':'🟢 Yoq'}</button>
+          </div>
+        </div>
+        <div style="margin-bottom:8px">
+          ${p.variants.map(v=>`
+            <div class="variant-row">
+              <div class="variant-info">
+                <b>${v.nameUz}</b> / ${v.nameRu}
+                <span style="color:var(--muted);font-size:11px"> · ${v.unitType}${v.piecesPerUnit>1?' ('+v.piecesPerUnit+' dona)':''}</span>
+                ${!v.isActive?'<span class="inactive-badge">Nofaol</span>':''}
+              </div>
+              <div class="variant-price">${fmt(v.price)} сум</div>
+              <button class="btn-sm" onclick="openVarModal('${p.id}','${v.id}')">✏️</button>
+              <button class="btn-sm" style="color:var(--danger)" onclick="deleteVariant('${v.id}')">🗑️</button>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn-sm" onclick="openVarModal('${p.id}')">+ Variant qo'shish</button>
+      </div>
+    `).join('');
+  }
+
+  // Product modal
+  function openProdModal(prodId) {
+    editingProdId = prodId || null;
+    const p = prodId ? allProducts.find(x=>x.id===prodId) : null;
+    const catOptions = allCats.map(c=>`<option value="${c.id}" ${p?.categoryId===c.id?'selected':''}>${c.nameUz} / ${c.nameRu}</option>`).join('');
+    document.getElementById('prod-modal').innerHTML = `
+      <div class="modal">
+        <h3>${p?'✏️ Mahsulotni tahrirlash':'➕ Yangi mahsulot'}</h3>
+        <div class="form-row" style="margin-bottom:10px">
+          <input class="form-input" id="pm-nameUz" placeholder="Nomi (UZ)" value="${p?.nameUz||''}">
+          <input class="form-input" id="pm-nameRu" placeholder="Nomi (RU)" value="${p?.nameRu||''}">
+        </div>
+        <select class="form-input" id="pm-cat">${catOptions}</select>
+        <input class="form-input" id="pm-img" placeholder="Rasm URL (ixtiyoriy)" value="${p?.imageUrl||''}">
+        <input class="form-input" id="pm-sort" type="number" placeholder="Tartib (sort)" value="${p?.sortOrder??0}">
+        <div class="modal-actions">
+          <button class="btn btn-sm" onclick="closeProdModal()">Bekor</button>
+          <button class="btn btn-primary" onclick="saveProd()">💾 Saqlash</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('prod-modal').classList.add('show');
+  }
+  function closeProdModal() { document.getElementById('prod-modal').classList.remove('show'); }
+
+  async function saveProd() {
+    const body = {
+      nameUz: document.getElementById('pm-nameUz').value.trim(),
+      nameRu: document.getElementById('pm-nameRu').value.trim(),
+      categoryId: document.getElementById('pm-cat').value,
+      imageUrl: document.getElementById('pm-img').value.trim() || undefined,
+      sortOrder: parseInt(document.getElementById('pm-sort').value)||0,
+    };
+    if (!body.nameUz||!body.nameRu) { alert('Ism (UZ va RU) kiriting!'); return; }
+    try {
+      if (editingProdId) {
+        await fetch('/api/v1/admin/catalog/products/'+editingProdId, { method:'PATCH', headers:{'Content-Type':'application/json','x-telegram-id':tgId}, body:JSON.stringify(body) });
+      } else {
+        await fetch('/api/v1/admin/catalog/products', { method:'POST', headers:{'Content-Type':'application/json','x-telegram-id':tgId}, body:JSON.stringify(body) });
+      }
+      closeProdModal();
+      loadProducts();
+    } catch(e) { alert('Xatolik: '+e.message); }
+  }
+
+  async function toggleProduct(id, isActive) {
+    await fetch('/api/v1/admin/catalog/products/'+id, { method:'PATCH', headers:{'Content-Type':'application/json','x-telegram-id':tgId}, body:JSON.stringify({ isActive }) });
+    loadProducts();
+  }
+
+  // Variant modal
+  function openVarModal(prodId, varId) {
+    editingVarId = varId || null;
+    const p = allProducts.find(x=>x.id===prodId);
+    const v = varId ? p?.variants.find(x=>x.id===varId) : null;
+    document.getElementById('var-modal').innerHTML = `
+      <div class="modal">
+        <h3>${v?'✏️ Variantni tahrirlash':'➕ Yangi variant'} — ${p?.nameUz}</h3>
+        <div class="form-row" style="margin-bottom:10px">
+          <input class="form-input" id="vm-nameUz" placeholder="Nomi (UZ)" value="${v?.nameUz||''}">
+          <input class="form-input" id="vm-nameRu" placeholder="Nomi (RU)" value="${v?.nameRu||''}">
+        </div>
+        <select class="form-input" id="vm-type">
+          <option value="whole" ${v?.unitType==='whole'?'selected':''}>Butun tort (whole)</option>
+          <option value="slice" ${v?.unitType==='slice'?'selected':''}>Bo'lak (slice)</option>
+          <option value="piece" ${v?.unitType==='piece'?'selected':''}>Dona (piece)</option>
+        </select>
+        <input class="form-input" id="vm-price" type="number" placeholder="Narx (so'm)" value="${v?.price||''}">
+        <input class="form-input" id="vm-pieces" type="number" placeholder="Necha dona (default 1)" value="${v?.piecesPerUnit||1}">
+        <input class="form-input" id="vm-sort" type="number" placeholder="Tartib" value="${v?.sortOrder||0}">
+        <input type="hidden" id="vm-prodId" value="${prodId}">
+        <div class="modal-actions">
+          <button class="btn btn-sm" onclick="closeVarModal()">Bekor</button>
+          <button class="btn btn-primary" onclick="saveVar()">💾 Saqlash</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('var-modal').classList.add('show');
+  }
+  function closeVarModal() { document.getElementById('var-modal').classList.remove('show'); }
+
+  async function saveVar() {
+    const body = {
+      nameUz: document.getElementById('vm-nameUz').value.trim(),
+      nameRu: document.getElementById('vm-nameRu').value.trim(),
+      unitType: document.getElementById('vm-type').value,
+      price: parseFloat(document.getElementById('vm-price').value)||0,
+      piecesPerUnit: parseInt(document.getElementById('vm-pieces').value)||1,
+      sortOrder: parseInt(document.getElementById('vm-sort').value)||0,
+    };
+    if (!body.nameUz||!body.price) { alert('Ism va narx kiriting!'); return; }
+    const prodId = document.getElementById('vm-prodId').value;
+    try {
+      if (editingVarId) {
+        await fetch('/api/v1/admin/catalog/variants/'+editingVarId, { method:'PATCH', headers:{'Content-Type':'application/json','x-telegram-id':tgId}, body:JSON.stringify(body) });
+      } else {
+        await fetch('/api/v1/admin/catalog/products/'+prodId+'/variants', { method:'POST', headers:{'Content-Type':'application/json','x-telegram-id':tgId}, body:JSON.stringify(body) });
+      }
+      closeVarModal();
+      loadProducts();
+    } catch(e) { alert('Xatolik: '+e.message); }
+  }
+
+  async function deleteVariant(id) {
+    if (!confirm('Bu variantni o\'chirishni istaysizmi?')) return;
+    await fetch('/api/v1/admin/catalog/variants/'+id, { method:'DELETE', headers:{'x-telegram-id':tgId} });
+    loadProducts();
+  }
 </script>
 </body>
 </html>
