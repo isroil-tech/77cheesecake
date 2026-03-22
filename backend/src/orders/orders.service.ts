@@ -182,13 +182,13 @@ export class OrdersService {
     const todayOrders = allOrders.filter(o => new Date(o.createdAt) >= todayStart);
 
     // Revenue (exclude cancelled & pending_payment)
-    const validStatuses = ['new', 'preparing', 'ready', 'delivered'];
+    const validStatuses = ['new', 'ready', 'delivered'];
     const totalRevenue = allOrders
       .filter(o => validStatuses.includes(o.status))
-      .reduce((s, o) => s + Number(o.totalAmount), 0);
+      .reduce((s, o) => s + Number(o.totalAmount) + Number(o.boxFee || 0), 0);
     const todayRevenue = todayOrders
       .filter(o => validStatuses.includes(o.status))
-      .reduce((s, o) => s + Number(o.totalAmount), 0);
+      .reduce((s, o) => s + Number(o.totalAmount) + Number(o.boxFee || 0), 0);
 
     // Status counts
     const statusCounts: Record<string, number> = {};
