@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Telegraf } from 'telegraf';
+import { Telegraf, Markup } from 'telegraf';
 import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
@@ -16,7 +16,6 @@ export class NotificationService {
   }
 
   private async getCafeGroupChatId(): Promise<string> {
-    // Try DB first, then env fallback
     const dbValue = await this.settingsService.getCafeGroupChatId();
     if (dbValue) return dbValue;
     return this.config.get<string>('CAFE_GROUP_CHAT_ID') || '';
@@ -37,14 +36,12 @@ export class NotificationService {
       ? (isRu ? '🚗 Доставка' : '🚗 Yetkazish')
       : (isRu ? '🏪 Самовывоз' : '🏪 Olib ketish');
 
-    // Payment type
     const paymentLabel = order.paymentType === 'cash'
       ? (isRu ? '💵 Наличные' : '💵 Naqd')
       : order.paymentType === 'card'
         ? (isRu ? '💳 Карта (перевод)' : '💳 Karta (o\'tkazma)')
         : (isRu ? '⏳ Ожидание оплаты' : '⏳ To\'lov kutilmoqda');
 
-    // Build items list
     const itemLines = order.items.map((item: any, idx: number) => {
       const name = isRu ? item.productNameRu : item.productNameUz;
       const totalPrice = this.formatPrice(item.totalPrice);
@@ -56,50 +53,62 @@ export class NotificationService {
     const boxFee = Number(order.boxFee || 5000);
 
     const message = [
-      `🧾 <b>${isRu ? 'Заказ' : 'Buyurtma'} #${String(order.orderNumber).padStart(4, '0')}</b>`,
+      `🧾 <b>Buyurtma #${String(order.orderNumber).padStart(4, '0')}</b>`,
       '',
-      `👤 ${isRu ? 'Имя' : 'Ism'}: ${order.user?.firstName || '-'} ${order.user?.lastName || ''}`.trim(),
-      `📱 ${isRu ? 'Тел' : 'Tel'}: ${order.user?.phone || '-'}`,
+      `👤 Ism: ${order.user?.firstName || '-'} ${order.user?.lastName || ''}`.trim(),
+      `📱 Tel: ${order.user?.phone || '-'}`,
       usernameLine,
       extraPhoneLine,
-      `🌐 ${isRu ? 'Язык' : 'Til'}: ${languageLabel}`,
+      `🌐 Til: ${languageLabel}`,
       '',
       deliveryLabel,
-      order.address ? `📍 ${isRu ? 'Адрес' : 'Manzil'}: ${order.address}` : '',
+      order.address ? `📍 Manzil: ${order.address}` : '',
       order.latitude ? `📍 GPS: ${order.latitude}, ${order.longitude}` : '',
       '',
-      `💰 ${isRu ? 'Оплата' : "To'lov"}: ${paymentLabel}`,
+      `💰 To'lov: ${paymentLabel}`,
       '',
-      `📦 ${isRu ? 'Товары' : 'Mahsulotlar'}:`,
+      `📦 Mahsulotlar:`,
       itemLines,
       '',
-      `📦 ${isRu ? 'Упаковка' : 'Qadoq'}: ${this.formatPrice(boxFee)} сум`,
-      `💰 ${isRu ? 'Итого' : 'Jami'}: <b>${this.formatPrice(Number(order.totalAmount) + boxFee)} сум</b>`,
-      order.comment ? `\n💬 ${isRu ? 'Комментарий' : 'Izoh'}: ${order.comment}` : '',
+      `📦 Qadoq: ${this.formatPrice(boxFee)} сум`,
+      `💰 Jami: <b>${this.formatPrice(Number(order.totalAmount) + boxFee)} сум</b>`,
+      order.comment ? `\n💬 Izoh: ${order.comment}` : '',
       '',
       `🕐 ${new Date(order.createdAt).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}`,
     ].filter(Boolean).join('\n');
 
+    // Admin action buttons
+    const keyboard = Markup.inlineKeyboard([
+      [Markup.button.callback("✅ To'lov qabul qilindi", `pay:${order.id}`)],
+      [
+        Markup.button.callback('🚚 Yetkazib berildi', `deliver:${order.id}`),
+        Markup.button.callback('❌ Bekor qilish', `cancel:${order.id}`),
+      ],
+    ]);
+
     try {
-      // If payment screenshot exists, send order info + screenshot as one message
       if (order.paymentScreenshot) {
         try {
           const base64 = order.paymentScreenshot.replace(/^data:image\/\w+;base64,/, '');
           const buf = Buffer.from(base64, 'base64');
-          await this.bot.telegram.sendPhoto(
+          return await this.bot.telegram.sendPhoto(
             cafeGroupChatId,
             { source: buf },
-            { caption: message, parse_mode: 'HTML' }
+            { caption: message, parse_mode: 'HTML', reply_markup: keyboard.reply_markup } as any,
           );
         } catch (photoErr) {
           this.logger.error('Failed to send photo, sending text only', photoErr);
-          await this.bot.telegram.sendMessage(cafeGroupChatId, message, { parse_mode: 'HTML' });
+          return await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
+            parse_mode: 'HTML',
+            reply_markup: keyboard.reply_markup,
+          } as any);
         }
       } else {
-        await this.bot.telegram.sendMessage(cafeGroupChatId, message, { parse_mode: 'HTML' });
+        return await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
+          parse_mode: 'HTML',
+          reply_markup: keyboard.reply_markup,
+        } as any);
       }
-
-      this.logger.log(`Order #${order.orderNumber} sent to cafe group`);
     } catch (e) {
       this.logger.error('Failed to send order to cafe group', e);
     }

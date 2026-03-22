@@ -4,6 +4,7 @@ import { Telegraf, Markup } from 'telegraf';
 import { UsersService } from '../users/users.service';
 import { I18nService } from '../i18n/i18n.service';
 import { NotificationService } from './notification.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class TelegramService implements OnModuleInit, OnModuleDestroy {
@@ -18,6 +19,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     private usersService: UsersService,
     private i18n: I18nService,
     private notificationService: NotificationService,
+    private prisma: PrismaService,
   ) {
     this.bot = new Telegraf(this.config.get<string>('BOT_TOKEN')!);
   }
@@ -83,6 +85,43 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   }
 
   private setupHandlers() {
+    // ─── Admin inline button callbacks ────────────────────────────────────
+    const handleOrderAction = async (ctx: any, status: string, label: string) => {
+      try {
+        const data: string = ctx.callbackQuery?.data || '';
+        const orderId = data.split(':')[1];
+        if (!orderId) { await ctx.answerCbQuery('ID topilmadi'); return; }
+
+        const order = await this.prisma.order.update({
+          where: { id: orderId },
+          data: { status },
+          include: { user: true, items: true },
+        });
+
+        // Notify customer
+        if (order.user?.telegramId && !order.user.telegramId.startsWith('guest-')) {
+          await this.sendStatusUpdate(order.user.telegramId, order.user.language || 'uz', order.orderNumber, status).catch(() => {});
+        }
+
+        // Update group message keyboard — show final status text only
+        await ctx.editMessageReplyMarkup({
+          inline_keyboard: [[{ text: label, callback_data: 'noop' }]],
+        }).catch(() => {});
+
+        await ctx.answerCbQuery(`✅ ${label}`);
+        this.logger.log(`Order #${order.orderNumber} status → ${status}`);
+      } catch (e: any) {
+        this.logger.error(`Order action error (${status}):`, e.message);
+        await ctx.answerCbQuery('Xatolik yuz berdi!').catch(() => {});
+      }
+    };
+
+    this.bot.action(/^pay:(.+)$/, (ctx) => handleOrderAction(ctx, 'preparing', "✅ To'lov qabul qilindi — Tayyorlanmoqda"));
+    this.bot.action(/^deliver:(.+)$/, (ctx) => handleOrderAction(ctx, 'delivered', '🚚 Yetkazib berildi'));
+    this.bot.action(/^cancel:(.+)$/, (ctx) => handleOrderAction(ctx, 'cancelled', '❌ Bekor qilindi'));
+    this.bot.action('noop', (ctx) => ctx.answerCbQuery().catch(() => {}));
+    // ─────────────────────────────────────────────────────────────────────
+
     // /chatid
     this.bot.command('chatid', async (ctx) => {
       try {
