@@ -141,23 +141,19 @@ export class OrdersController {
 
   @Post('orders/:id/payment')
   async confirmPayment(
-    @Req() req: any,
     @Param('id') id: string,
     @Body() body: {
       paymentType: string;
       paymentScreenshot?: string;
     },
   ) {
-    const telegramId = req.headers['x-telegram-id'];
-    if (!telegramId) return { error: 'Unauthorized' };
-
     const order = await this.ordersService.confirmPayment(
       id,
       body.paymentType,
       body.paymentScreenshot,
     );
 
-    // Send updated order info to group with payment details
+    // Send to group with payment details (including screenshot if any)
     this.telegramService.sendOrderToGroup(order).catch(() => {});
 
     return order;
