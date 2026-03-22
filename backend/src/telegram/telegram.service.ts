@@ -88,16 +88,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     // ─── Admin inline button callbacks (dynamic keyboard) ─────────────────
     const getNextKeyboard = (status: string, orderId: string) => {
       switch (status) {
-        case 'preparing':
-          return {
-            inline_keyboard: [
-              [
-                { text: "🚗 Kuryerga berildi", callback_data: `courier:${orderId}` },
-                { text: "🚚 Yetkazib berildi", callback_data: `deliver:${orderId}` },
-              ],
-              [{ text: "❌ Bekor qilish", callback_data: `cancel:${orderId}` }],
-            ],
-          };
         case 'ready':
           return {
             inline_keyboard: [
@@ -142,7 +132,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
     };
 
-    this.bot.action(/^pay:(.+)$/, (ctx) => handleOrderAction(ctx, 'preparing', "✅ To'lov qabul qilindi"));
+    this.bot.action(/^pay:(.+)$/, (ctx) => handleOrderAction(ctx, 'ready', "✅ To'lov qabul qilindi"));
     this.bot.action(/^courier:(.+)$/, (ctx) => handleOrderAction(ctx, 'ready', '🚗 Kuryerga berildi'));
     this.bot.action(/^deliver:(.+)$/, (ctx) => handleOrderAction(ctx, 'delivered', '🚚 Yetkazib berildi'));
     this.bot.action(/^cancel:(.+)$/, (ctx) => handleOrderAction(ctx, 'cancelled', '❌ Bekor qilindi'));

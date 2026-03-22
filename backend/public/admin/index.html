@@ -201,7 +201,6 @@
         <button class="ftab active" onclick="setFilter('all',this)">Hammasi</button>
         <button class="ftab" onclick="setFilter('pending_payment',this)">To'lov</button>
         <button class="ftab" onclick="setFilter('new',this)">Yangi</button>
-        <button class="ftab" onclick="setFilter('preparing',this)">Tayyorlanmoqda</button>
         <button class="ftab" onclick="setFilter('ready',this)">Tayyor</button>
         <button class="ftab" onclick="setFilter('delivered',this)">Yetkazildi</button>
         <button class="ftab" onclick="setFilter('cancelled',this)">Bekor</button>
@@ -299,11 +298,11 @@
   let modalTargetId = '';
 
   const STATUS_LABELS = {
-    pending_payment:"⏳ To'lov", new:'🆕 Yangi', preparing:'👨‍🍳 Tayyorlanmoqda',
+    pending_payment:"⏳ To'lov", new:'🆕 Yangi',
     ready:'✅ Tayyor', delivered:'📦 Yetkazildi', cancelled:'❌ Bekor',
   };
   const STATUS_COLORS = {
-    pending_payment:'#fbbf24', new:'#60a5fa', preparing:'#c4b5fd',
+    pending_payment:'#fbbf24', new:'#60a5fa',
     ready:'#4ade80', delivered:'#22c55e', cancelled:'#f87171',
   };
 
