@@ -211,7 +211,7 @@ export class OrdersService {
         date: dayStart.toISOString().slice(0, 10),
         revenue: dayOrders
           .filter(o => validStatuses.includes(o.status))
-          .reduce((s, o) => s + Number(o.totalAmount), 0),
+          .reduce((s, o) => s + Number(o.totalAmount) + Number(o.boxFee || 0), 0),
         count: dayOrders.length,
       });
     }
