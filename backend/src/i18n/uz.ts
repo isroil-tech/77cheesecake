@@ -1,5 +1,5 @@
 export const uz = {
-  welcome: "77Cheesecake'ga xush kelibsiz! 🍰",
+  welcome: "77CHEESECAKE'ga xush kelibsiz! 🍰",
   selectLanguage: "Tilni tanlang / Выберите язык:",
   languageSet: "Til o'rnatildi: O'zbekcha 🇺🇿",
   sharePhone: "📱 Iltimos, telefon raqamingizni ulashing:",

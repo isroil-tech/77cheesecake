@@ -1,5 +1,5 @@
 export const ru = {
-  welcome: "Добро пожаловать в 77Cheesecake! 🍰",
+  welcome: "Добро пожаловать в 77CHEESECAKE! 🍰",
   selectLanguage: "Tilni tanlang / Выберите язык:",
   languageSet: "Язык установлен: Русский 🇷🇺",
   sharePhone: "📱 Пожалуйста, поделитесь номером телефона:",

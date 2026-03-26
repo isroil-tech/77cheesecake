@@ -198,7 +198,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         }
 
         await ctx.reply(
-          '🍰 77Cheesecake\n\n' + this.i18n.t('uz', 'selectLanguage'),
+          '🍰 77CHEESECAKE\n\n' + this.i18n.t('uz', 'selectLanguage'),
           Markup.inlineKeyboard([
             [
               Markup.button.callback("🇺🇿 O'zbekcha", 'lang_uz'),

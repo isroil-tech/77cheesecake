@@ -33,7 +33,7 @@ export class OrdersController {
   getSettings() {
     return {
       cardNumber: this.config.get<string>('CARD_NUMBER') || '',
-      cardHolder: this.config.get<string>('CARD_HOLDER') || '77Cheesecake',
+      cardHolder: this.config.get<string>('CARD_HOLDER') || '77CHEESECAKE',
     };
   }
 
