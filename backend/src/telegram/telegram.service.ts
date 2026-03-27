@@ -86,48 +86,74 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
   private setupHandlers() {
     // ─── Admin inline button callbacks (dynamic keyboard) ─────────────────
-    const getNextKeyboard = (status: string, orderId: string) => {
+
+    // Returns keyboard for a given status with undo button
+    const getNextKeyboard = (status: string, orderId: string, prevStatus?: string) => {
+      const undoRow = prevStatus
+        ? [{ text: `↩️ Qaytarish (${prevStatus})`, callback_data: `undo:${prevStatus}:${orderId}` }]
+        : [];
+
       switch (status) {
         case 'ready':
           return {
             inline_keyboard: [
-              [{ text: "🚚 Yetkazib berildi", callback_data: `deliver:${orderId}` }],
-              [{ text: "❌ Bekor qilish", callback_data: `cancel:${orderId}` }],
+              [{ text: '🚚 Yetkazib berildi', callback_data: `deliver:${orderId}` }],
+              [{ text: '❌ Bekor qilish', callback_data: `cancel:${orderId}` }],
+              ...(undoRow.length ? [undoRow] : []),
             ],
           };
         case 'delivered':
-          return { inline_keyboard: [[{ text: "✅ Yetkazib berildi", callback_data: 'noop' }]] };
+          return {
+            inline_keyboard: [
+              [{ text: '✅ Yetkazib berildi', callback_data: 'noop' }],
+              ...(undoRow.length ? [undoRow] : []),
+            ],
+          };
         case 'cancelled':
-          return { inline_keyboard: [[{ text: "❌ Bekor qilindi", callback_data: 'noop' }]] };
+          return {
+            inline_keyboard: [
+              [{ text: '❌ Bekor qilindi', callback_data: 'noop' }],
+              ...(undoRow.length ? [undoRow] : []),
+            ],
+          };
         default:
           return { inline_keyboard: [[{ text: `📋 ${status}`, callback_data: 'noop' }]] };
       }
     };
 
-    const handleOrderAction = async (ctx: any, status: string, label: string) => {
+    // Status label for display
+    const statusLabel = (s: string) =>
+      ({ pending_payment: "To'lov", new: 'Yangi', ready: 'Tayyor', delivered: 'Yetkazildi', cancelled: 'Bekor' }[s] || s);
+
+    const handleOrderAction = async (ctx: any, newStatus: string, label: string, prevStatusOverride?: string) => {
       try {
         const data: string = ctx.callbackQuery?.data || '';
-        const orderId = data.split(':')[1];
+        const parts = data.split(':');
+        const orderId = parts[parts.length - 1];
         if (!orderId) { await ctx.answerCbQuery('ID topilmadi'); return; }
+
+        // Get current status before update
+        const existing = await this.prisma.order.findUnique({ where: { id: orderId } });
+        const prevStatus = prevStatusOverride || existing?.status || 'new';
 
         const order = await this.prisma.order.update({
           where: { id: orderId },
-          data: { status },
+          data: { status: newStatus },
           include: { user: true, items: true },
         });
 
         // Notify customer
         if (order.user?.telegramId && !order.user.telegramId.startsWith('guest-')) {
-          await this.sendStatusUpdate(order.user.telegramId, order.user.language || 'uz', order.orderNumber, status).catch(() => {});
+          await this.sendStatusUpdate(order.user.telegramId, order.user.language || 'uz', order.orderNumber, newStatus).catch(() => {});
         }
 
-        // Update keyboard to next stage buttons
-        await ctx.editMessageReplyMarkup(getNextKeyboard(status, orderId)).catch(() => {});
+        // Update keyboard with undo button
+        await ctx.editMessageReplyMarkup(getNextKeyboard(newStatus, orderId, prevStatus)).catch(() => {});
 
         await ctx.answerCbQuery(`✅ ${label}`);
-        this.logger.log(`Order #${order.orderNumber} → ${status}`);
+        this.logger.log(`Order #${order.orderNumber} → ${newStatus} (prev: ${prevStatus})`);
       } catch (e: any) {
-        this.logger.error(`Order action (${status}):`, e.message);
+        this.logger.error(`Order action (${newStatus}):`, e.message);
         await ctx.answerCbQuery('Xatolik!').catch(() => {});
       }
     };
@@ -135,6 +161,24 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     this.bot.action(/^pay:(.+)$/, (ctx) => handleOrderAction(ctx, 'ready', "✅ To'lov qabul qilindi"));
     this.bot.action(/^deliver:(.+)$/, (ctx) => handleOrderAction(ctx, 'delivered', '🚚 Yetkazib berildi'));
     this.bot.action(/^cancel:(.+)$/, (ctx) => handleOrderAction(ctx, 'cancelled', '❌ Bekor qilindi'));
+
+    // Undo: revert to previous status
+    this.bot.action(/^undo:([^:]+):(.+)$/, async (ctx) => {
+      try {
+        const data: string = ctx.callbackQuery?.data || '';
+        const parts = data.split(':');
+        // undo:prevStatus:orderId
+        const prevStatus = parts[1];
+        const orderId = parts.slice(2).join(':');
+        if (!orderId || !prevStatus) { await ctx.answerCbQuery('ID topilmadi'); return; }
+
+        await handleOrderAction(ctx, prevStatus, `↩️ ${statusLabel(prevStatus)} ga qaytarildi`);
+      } catch (e: any) {
+        this.logger.error('Undo action error:', e.message);
+        await ctx.answerCbQuery('Xatolik!').catch(() => {});
+      }
+    });
+
     this.bot.action('noop', (ctx) => ctx.answerCbQuery().catch(() => {}));
     // ─────────────────────────────────────────────────────────────────────
 
