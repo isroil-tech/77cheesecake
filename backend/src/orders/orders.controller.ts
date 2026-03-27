@@ -118,6 +118,7 @@ export class OrdersController {
       longitude?: number;
       comment?: string;
       extraPhone?: string;
+      floor?: string;
       items?: any[];
     },
   ) {

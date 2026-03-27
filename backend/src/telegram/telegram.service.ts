@@ -86,25 +86,46 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
   private setupHandlers() {
     // ─── Admin inline button callbacks (dynamic keyboard) ─────────────────
+    // Status flow: new → ready → delivered
+    // Each keyboard includes an undo button for the previous state
     const getNextKeyboard = (status: string, orderId: string) => {
       switch (status) {
+        case 'new':
+          return {
+            inline_keyboard: [
+              [{ text: "✅ To'lov qabul qilindi", callback_data: `pay:${orderId}` }],
+              [{ text: '❌ Bekor qilish', callback_data: `cancel:${orderId}` }],
+            ],
+          };
         case 'ready':
           return {
             inline_keyboard: [
-              [{ text: "🚚 Yetkazib berildi", callback_data: `deliver:${orderId}` }],
-              [{ text: "❌ Bekor qilish", callback_data: `cancel:${orderId}` }],
+              [{ text: '🚚 Yetkazib berildi', callback_data: `deliver:${orderId}` }],
+              [{ text: '↩️ Orqaga (new)', callback_data: `undo:${orderId}:new` }],
+              [{ text: '❌ Bekor qilish', callback_data: `cancel:${orderId}` }],
             ],
           };
         case 'delivered':
-          return { inline_keyboard: [[{ text: "✅ Yetkazib berildi", callback_data: 'noop' }]] };
+          return {
+            inline_keyboard: [
+              [{ text: '✅ Yetkazib berildi', callback_data: 'noop' }],
+              [{ text: '↩️ Orqaga (ready)', callback_data: `undo:${orderId}:ready` }],
+            ],
+          };
         case 'cancelled':
-          return { inline_keyboard: [[{ text: "❌ Bekor qilindi", callback_data: 'noop' }]] };
+          return {
+            inline_keyboard: [
+              [{ text: '❌ Bekor qilindi', callback_data: 'noop' }],
+              [{ text: '↩️ Orqaga (new)', callback_data: `undo:${orderId}:new` }],
+            ],
+          };
         default:
           return { inline_keyboard: [[{ text: `📋 ${status}`, callback_data: 'noop' }]] };
       }
     };
 
     const handleOrderAction = async (ctx: any, status: string, label: string) => {
+
       try {
         const data: string = (ctx.callbackQuery as any)?.data || '';
         const orderId = data.split(':')[1];
@@ -136,7 +157,31 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     this.bot.action(/^deliver:(.+)$/, (ctx) => handleOrderAction(ctx, 'delivered', '🚚 Yetkazib berildi'));
     this.bot.action(/^cancel:(.+)$/, (ctx) => handleOrderAction(ctx, 'cancelled', '❌ Bekor qilindi'));
     this.bot.action('noop', (ctx) => ctx.answerCbQuery().catch(() => {}));
+
+    // Undo: revert order to previous status (Fix 6)
+    this.bot.action(/^undo:(.+):(.+)$/, async (ctx) => {
+      try {
+        const data: string = (ctx.callbackQuery as any)?.data || '';
+        const parts = data.split(':');
+        const orderId = parts[1];
+        const prevStatus = parts[2];
+        if (!orderId || !prevStatus) { await ctx.answerCbQuery('ID topilmadi'); return; }
+
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: { status: prevStatus },
+        });
+
+        await ctx.editMessageReplyMarkup(getNextKeyboard(prevStatus, orderId)).catch(() => {});
+        await ctx.answerCbQuery(`↩️ ${prevStatus} ga qaytarildi`);
+        this.logger.log(`Order ${orderId} reverted → ${prevStatus}`);
+      } catch (e: any) {
+        this.logger.error('undo error:', e.message);
+        await ctx.answerCbQuery('Xatolik!').catch(() => {});
+      }
+    });
     // ─────────────────────────────────────────────────────────────────────
+
 
     // /chatid
     this.bot.command('chatid', async (ctx) => {

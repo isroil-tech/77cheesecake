@@ -50,6 +50,7 @@ export class NotificationService {
 
     const usernameLine = order.user?.username ? `🔗 @${order.user.username}` : '';
     const extraPhoneLine = order.extraPhone ? `📱 ${isRu ? 'Доп. тел' : "Qo'sh. tel"}: ${order.extraPhone}` : '';
+    const floorLine = order.floor ? `🏢 ${isRu ? 'Этаж/кв' : 'Qavat/xonadon'}: ${order.floor}` : '';
     const boxFee = Number(order.boxFee || 5000);
 
     const message = [
@@ -63,6 +64,7 @@ export class NotificationService {
       '',
       deliveryLabel,
       order.address ? `📍 Manzil: ${order.address}` : '',
+      floorLine,
       order.latitude ? `📍 GPS: ${order.latitude}, ${order.longitude}` : '',
       '',
       `💰 To'lov: ${paymentLabel}`,
@@ -87,28 +89,54 @@ export class NotificationService {
     ]);
 
     try {
+      let sentMessage: any;
       if (order.paymentScreenshot) {
         try {
           const base64 = order.paymentScreenshot.replace(/^data:image\/\w+;base64,/, '');
           const buf = Buffer.from(base64, 'base64');
-          return await this.bot.telegram.sendPhoto(
+          sentMessage = await this.bot.telegram.sendPhoto(
             cafeGroupChatId,
             { source: buf },
             { caption: message, parse_mode: 'HTML', reply_markup: keyboard.reply_markup } as any,
           );
         } catch (photoErr) {
           this.logger.error('Failed to send photo, sending text only', photoErr);
-          return await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
+          sentMessage = await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
             parse_mode: 'HTML',
             reply_markup: keyboard.reply_markup,
           } as any);
         }
       } else {
-        return await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
+        sentMessage = await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
           parse_mode: 'HTML',
           reply_markup: keyboard.reply_markup,
         } as any);
       }
+
+      // Send location pin after the order message (Fix 5)
+      if (order.latitude && order.longitude) {
+        const lat = Number(order.latitude);
+        const lon = Number(order.longitude);
+        const yandexUrl = `https://yandex.com/maps/?ll=${lon},${lat}&pt=${lon},${lat},pm2rdm&z=17`;
+        try {
+          await this.bot.telegram.sendLocation(cafeGroupChatId, lat, lon);
+          await this.bot.telegram.sendMessage(
+            cafeGroupChatId,
+            '🗺 Xaritada ko\'rish:',
+            {
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: '📍 Yandex Xaritada ochish', url: yandexUrl }],
+                ],
+              },
+            } as any,
+          );
+        } catch (locErr) {
+          this.logger.error('Failed to send location', locErr);
+        }
+      }
+
+      return sentMessage;
     } catch (e) {
       this.logger.error('Failed to send order to cafe group', e);
     }

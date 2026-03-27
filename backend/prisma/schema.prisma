@@ -111,6 +111,7 @@ model Order {
   longitude         Float?
   comment           String?
   extraPhone        String?  @map("extra_phone")
+  floor             String?  @map("floor")
   paymentType       String?  @map("payment_type")
   paymentScreenshot String?  @map("payment_screenshot")
   totalAmount       Decimal  @db.Decimal(10, 2) @map("total_amount")
