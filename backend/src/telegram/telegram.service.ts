@@ -127,7 +127,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     const handleOrderAction = async (ctx: any, newStatus: string, label: string, prevStatusOverride?: string) => {
       try {
-        const data: string = ctx.callbackQuery?.data || '';
+        const data: string = (ctx.callbackQuery as any)?.data || '';
         const parts = data.split(':');
         const orderId = parts[parts.length - 1];
         if (!orderId) { await ctx.answerCbQuery('ID topilmadi'); return; }
@@ -165,7 +165,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     // Undo: revert to previous status
     this.bot.action(/^undo:([^:]+):(.+)$/, async (ctx) => {
       try {
-        const data: string = ctx.callbackQuery?.data || '';
+        const data: string = (ctx.callbackQuery as any)?.data || '';
         const parts = data.split(':');
         // undo:prevStatus:orderId
         const prevStatus = parts[1];
