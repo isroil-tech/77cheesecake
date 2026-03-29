@@ -79,63 +79,58 @@ export class NotificationService {
     ].filter(Boolean).join('\n');
 
     // Admin action buttons
-    const keyboard = Markup.inlineKeyboard([
+    // Build keyboard: admin buttons + optional map link at bottom
+    const lat = order.latitude ? Number(order.latitude) : null;
+    const lon = order.longitude ? Number(order.longitude) : null;
+    const yandexUrl = lat && lon
+      ? `https://yandex.com/maps/?ll=${lon},${lat}&pt=${lon},${lat},pm2rdm&z=17`
+      : null;
+
+    const keyboardRows: any[] = [
       [Markup.button.callback("✅ To'lov qabul qilindi", `pay:${order.id}`)],
       [
         Markup.button.callback('🚚 Yetkazib berildi', `deliver:${order.id}`),
         Markup.button.callback('❌ Bekor qilish', `cancel:${order.id}`),
       ],
-    ]);
+    ];
+    if (yandexUrl) {
+      keyboardRows.push([{ text: '📍 Xaritada ko\'rish', url: yandexUrl }]);
+    }
+    const keyboard = Markup.inlineKeyboard(keyboardRows);
 
     try {
-      let sentMessage: any;
+      // Message 1: order details + buttons (map link is last button row)
       if (order.paymentScreenshot) {
         try {
           const base64 = order.paymentScreenshot.replace(/^data:image\/\w+;base64,/, '');
           const buf = Buffer.from(base64, 'base64');
-          sentMessage = await this.bot.telegram.sendPhoto(
+          await this.bot.telegram.sendPhoto(
             cafeGroupChatId,
             { source: buf },
             { caption: message, parse_mode: 'HTML', reply_markup: keyboard.reply_markup } as any,
           );
         } catch (photoErr) {
           this.logger.error('Failed to send photo, sending text only', photoErr);
-          sentMessage = await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
+          await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
             parse_mode: 'HTML',
             reply_markup: keyboard.reply_markup,
           } as any);
         }
       } else {
-        sentMessage = await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
+        await this.bot.telegram.sendMessage(cafeGroupChatId, message, {
           parse_mode: 'HTML',
           reply_markup: keyboard.reply_markup,
         } as any);
       }
 
-      // Send location pin after the order message (Fix 5)
-      if (order.latitude && order.longitude) {
-        const lat = Number(order.latitude);
-        const lon = Number(order.longitude);
-        const yandexUrl = `https://yandex.com/maps/?ll=${lon},${lat}&pt=${lon},${lat},pm2rdm&z=17`;
+      // Message 2: Telegram location pin (only if coords exist)
+      if (lat && lon) {
         try {
           await this.bot.telegram.sendLocation(cafeGroupChatId, lat, lon);
-          await this.bot.telegram.sendMessage(
-            cafeGroupChatId,
-            '🗺 Xaritada ko\'rish:',
-            {
-              reply_markup: {
-                inline_keyboard: [
-                  [{ text: '📍 Yandex Xaritada ochish', url: yandexUrl }],
-                ],
-              },
-            } as any,
-          );
         } catch (locErr) {
-          this.logger.error('Failed to send location', locErr);
+          this.logger.error('Failed to send location pin', locErr);
         }
       }
-
-      return sentMessage;
     } catch (e) {
       this.logger.error('Failed to send order to cafe group', e);
     }
