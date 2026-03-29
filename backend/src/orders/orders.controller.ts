@@ -130,14 +130,6 @@ export class OrdersController {
     }
 
     const order = await this.ordersService.createOrder(user.id, body);
-
-    // Only notify the buyer (not group — group gets full details after payment confirmation)
-    this.telegramService.sendOrderNotification(
-      telegramId,
-      user.language,
-      order.orderNumber,
-    ).catch(() => {});
-
     return order;
   }
 
@@ -149,15 +141,23 @@ export class OrdersController {
       paymentScreenshot?: string;
     },
   ) {
-    // confirmPayment saves paymentScreenshot to DB, so order will have it
     const order = await this.ordersService.confirmPayment(
       id,
       body.paymentType,
       body.paymentScreenshot,
     );
 
-    // Send full order to group — notification.service sends screenshot+caption together if present
+    // Send full order details to group
     this.telegramService.sendOrderToGroup(order).catch(() => {});
+
+    // Notify buyer AFTER payment confirmed
+    if (order?.user) {
+      this.telegramService.sendOrderNotification(
+        order.user.telegramId,
+        order.user.language,
+        order.orderNumber,
+      ).catch(() => {});
+    }
 
     return order;
   }
