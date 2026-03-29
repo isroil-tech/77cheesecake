@@ -196,13 +196,18 @@
 
     <!-- ══════════════ ORDERS PAGE ══════════════ -->
     <div id="page-orders" class="page active">
-      <div class="filter-tabs">
-        <button class="ftab active" onclick="setFilter('all',this)">Hammasi</button>
-        <button class="ftab" onclick="setFilter('pending_payment',this)">To'lov</button>
-        <button class="ftab" onclick="setFilter('new',this)">Yangi</button>
-        <button class="ftab" onclick="setFilter('ready',this)">Tayyor</button>
-        <button class="ftab" onclick="setFilter('delivered',this)">Yetkazildi</button>
-        <button class="ftab" onclick="setFilter('cancelled',this)">Bekor</button>
+      <div style="display:flex; gap:8px; margin-bottom:16px; align-items:center;">
+        <button class="ftab active" id="btn-date-today" onclick="setDateFilter('today')">Bugun</button>
+        <button class="ftab" id="btn-date-all" onclick="setDateFilter('all')">Hammasi</button>
+        <div style="flex:1"></div>
+        <select class="status-select" id="status-filter" style="padding:7px; border-radius:8px; font-weight:600; font-size:12px; height:auto; background:var(--surface);" onchange="setStatusFilter(this.value)">
+          <option value="all">Barcha statuslar</option>
+          <option value="pending_payment">⏳ To'lov</option>
+          <option value="new">🆕 Yangi</option>
+          <option value="ready">✅ Tayyor</option>
+          <option value="delivered">📦 Yetkazildi</option>
+          <option value="cancelled">❌ Bekor</option>
+        </select>
       </div>
       <div id="orders-table" style="margin-bottom: 20px;"><div class="spinner"></div></div>
     </div>
@@ -291,7 +296,8 @@
 <script>
   let tgId = '';
   let allOrders = [], allUsers = [];
-  let currentFilter = 'all';
+  let dateFilter = 'today';
+  let statusFilter = 'all';
   let autoTimer = null;
   let modalTargetId = '';
 
@@ -355,15 +361,28 @@
     } catch(e){ console.error(e); }
   }
 
-  function setFilter(status, btn) {
-    currentFilter = status;
-    document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
+  function setDateFilter(df) {
+    dateFilter = df;
+    document.getElementById('btn-date-today').classList.toggle('active', df === 'today');
+    document.getElementById('btn-date-all').classList.toggle('active', df === 'all');
+    renderOrdersTable();
+  }
+
+  function setStatusFilter(sf) {
+    statusFilter = sf;
     renderOrdersTable();
   }
 
   function renderOrdersTable() {
-    const filtered = currentFilter==='all' ? allOrders : allOrders.filter(o=>o.status===currentFilter);
+    let filtered = allOrders;
+    if (dateFilter === 'today') {
+      // Local date in YYYY-MM-DD
+      const todayStr = new Date().toLocaleDateString('sv-SE'); // sv-SE gives YYYY-MM-DD
+      filtered = filtered.filter(o => o.createdAt && o.createdAt.startsWith(todayStr));
+    }
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(o => o.status === statusFilter);
+    }
     const wrap = document.getElementById('orders-table');
     if (!filtered.length) { wrap.innerHTML = '<div class="empty">Buyurtmalar topilmadi</div>'; return; }
     wrap.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;">
