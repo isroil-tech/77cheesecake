@@ -190,7 +190,6 @@
     <button class="nav-tab" onclick="showPage('stats',this)">📊 Statistika</button>
     <button class="nav-tab" onclick="showPage('users',this)">👥 Foydalanuvchilar</button>
     <button class="nav-tab" onclick="showPage('products',this);loadProducts()">🍰 Mahsulotlar</button>
-    <button class="nav-tab" onclick="showPage('settings',this)">⚙️ Sozlamalar</button>
   </div>
 
   <div class="main">
@@ -246,6 +245,16 @@
           <div id="top-products"></div>
         </div>
       </div>
+
+      <div class="section-card">
+        <div class="section-title">⚙️ Telegram Guruh Chat ID</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <input id="group-chat-id" class="settings-input" type="text" placeholder="Guruh Chat ID (-1001234567890)"/>
+          <button class="btn btn-primary" onclick="saveGroupId()">Saqlash</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Botni guruhga qo'shing va /chatid yuboring</div>
+        <div id="settings-msg" style="margin-top:8px;font-size:12px"></div>
+      </div>
     </div>
 
     <!-- ══════════════ USERS PAGE ══════════════ -->
@@ -274,18 +283,7 @@
       <div id="products-list"><div class="spinner"></div></div>
     </div>
 
-    <!-- ══════════════ SETTINGS PAGE ══════════════ -->
-    <div id="page-settings" class="page">
-      <div class="section-card">
-        <div class="section-title">⚙️ Telegram Guruh Chat ID</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <input id="group-chat-id" class="settings-input" type="text" placeholder="Guruh Chat ID (-1001234567890)"/>
-          <button class="btn btn-primary" onclick="saveGroupId()">Saqlash</button>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px">Botni guruhga qo'shing va /chatid yuboring</div>
-        <div id="settings-msg" style="margin-top:8px;font-size:12px"></div>
-      </div>
-    </div>
+
 
   </div><!-- /main -->
 </div><!-- /app -->
