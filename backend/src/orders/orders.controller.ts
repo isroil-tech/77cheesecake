@@ -157,6 +157,13 @@ export class OrdersController {
         order.user.language,
         order.orderNumber,
       ).catch(() => {});
+
+      // Birthday prompt on first valid order
+      this.ordersService.getUserOrderCount(order.userId).then(count => {
+        if (count === 1) {
+          this.telegramService.promptForBirthday(order.user.telegramId, order.user.language).catch(() => {});
+        }
+      }).catch(() => {});
     }
 
     return order;

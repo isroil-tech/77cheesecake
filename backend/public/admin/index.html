@@ -278,15 +278,19 @@
 
     <!-- ══════════════ USERS PAGE ══════════════ -->
     <div id="page-users" class="page">
-      <!-- Broadcast -->
-      <div class="section-card" style="margin-bottom:20px">
-        <div class="section-title">Umumiy xabar</div>
-        <textarea class="broadcast-area" id="broadcast-text" placeholder="Barcha foydalanuvchilarga yubormoqchi bo'lgan xabarni kiriting...&#10;&#10;HTML formatlash qo'llab-quvvatlanadi: &lt;b&gt;qalin&lt;/b&gt;, &lt;i&gt;kursiv&lt;/i&gt;, &lt;a href=&quot;url&quot;&gt;link&lt;/a&gt;"></textarea>
-        <div class="broadcast-row">
-          <button class="btn btn-primary" onclick="sendBroadcast()">Hammaga Yuborish</button>
-          <span style="font-size:12px;color:var(--muted)" id="bc-count"></span>
-          <div id="bc-result"></div>
-        </div>
+      <!-- Filters -->
+      <div style="display:flex; gap:8px; margin-bottom:16px; align-items:center;">
+        <select class="status-select" id="user-lang-filter" style="padding:7px; border-radius:8px; font-weight:500; font-size:12px; height:auto; background:var(--surface);" onchange="renderUsersTable()">
+          <option value="all">Barcha tillar</option>
+          <option value="uz">🇺🇿 O'zbek tili</option>
+          <option value="ru">🇷🇺 Rus tili</option>
+        </select>
+        <div style="flex:1"></div>
+        <select class="status-select" id="user-order-filter" style="padding:7px; border-radius:8px; font-weight:500; font-size:12px; height:auto; background:var(--surface);" onchange="renderUsersTable()">
+          <option value="all">Barcha mijozlar</option>
+          <option value="active">Buyurtma berganlar</option>
+          <option value="inactive">Buyurtma bermaganlar</option>
+        </select>
       </div>
 
       <!-- Users table -->
@@ -521,44 +525,55 @@
 
   function renderUsersTable() {
     const wrap = document.getElementById('users-table');
-    if (!allUsers.length) { wrap.innerHTML='<div class="empty">Foydalanuvchilar yo\'q</div>'; return; }
+    const langFilter = document.getElementById('user-lang-filter').value;
+    const orderFilter = document.getElementById('user-order-filter').value;
+
+    let filtered = allUsers;
+    if (langFilter !== 'all') {
+      filtered = filtered.filter(u => (u.language || 'uz') === langFilter);
+    }
+    if (orderFilter !== 'all') {
+      if (orderFilter === 'active') {
+        filtered = filtered.filter(u => (u.orderCount || 0) > 0);
+      } else if (orderFilter === 'inactive') {
+        filtered = filtered.filter(u => (u.orderCount || 0) === 0);
+      }
+    }
+
+    if (!filtered.length) { wrap.innerHTML='<div class="empty">Foydalanuvchilar topilmadi</div>'; return; }
+    
     wrap.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;">
-      ${allUsers.map((u,i)=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;">
+      ${filtered.map((u,i)=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <div style="font-weight:500;font-size:14px;">${i+1}. ${u.firstName||'—'} ${u.lastName||''}</div>
           <span class="pill pill-${u.language||'none'}">${u.language==='uz'?'🇺🇿 UZ':u.language==='ru'?'🇷🇺 RU':'—'}</span>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">📞 ${u.phone||'—'}</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">ID: ${u.telegramId} &bull; ${fmtDate(u.createdAt)}</div>
-        <button class="btn btn-sm" style="width:100%" onclick="openModal('${u.telegramId}','${(u.firstName||'Foydalanuvchi').replace(/'/g,'')}')">Xabar yuborish</button>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:10px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted)">Telefon</div>
+            <div style="font-size:13px;font-weight:500">${u.phone||'—'}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted)">Tug'ilgan sana</div>
+            <div style="font-size:13px;font-weight:500;color:var(--primary)">${u.birthDate||'—'}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted)">Buyurtmalar soni</div>
+            <div style="font-size:13px;font-weight:500">${u.orderCount||0} ta</div>
+          </div>
+          <div>
+             <div style="font-size:11px;color:var(--muted)">Oxirgi buyurtma</div>
+             <div style="font-size:13px;font-weight:500">${u.lastOrderDate ? fmtDate(u.lastOrderDate) : '—'}</div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+           <div style="font-size:11px;color:var(--muted)">ID: ${u.telegramId}</div>
+           <button class="btn btn-sm" onclick="openModal('${u.telegramId}','${(u.firstName||'Foydalanuvchi').replace(/'/g,'')}')">Xabar yuborish</button>
+        </div>
       </div>`).join('')}
     </div>`;
-  }
-
-  // ── BROADCAST ──
-  async function sendBroadcast() {
-    const text = document.getElementById('broadcast-text').value.trim();
-    if (!text) { alert('Xabar matnini kiriting!'); return; }
-    if (!confirm(`Barcha ${allUsers.length} foydalanuvchiga xabar yuborilsinmi?`)) return;
-
-    const resultEl = document.getElementById('bc-result');
-    resultEl.textContent = ' Yuborilmoqda...';
-
-    try {
-      const res = await fetch('/api/v1/admin/broadcast', {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json','x-telegram-id':tgId },
-        body: JSON.stringify({ message: text }),
-      });
-      const d = await res.json();
-      resultEl.style.color = 'var(--success)';
-      resultEl.textContent = ` Yuborildi: ${d.sent} ta, xato: ${d.failed} ta`;
-      document.getElementById('broadcast-text').value = '';
-      setTimeout(() => resultEl.textContent='', 6000);
-    } catch(e) {
-      resultEl.style.color = 'var(--danger)';
-      resultEl.textContent = 'Xatolik: ' + e.message;
-    }
   }
 
   // ── INDIVIDUAL MSG ──

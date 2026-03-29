@@ -47,9 +47,20 @@ export class UsersService {
   }
 
   async getAllUsers() {
-    return this.prisma.user.findMany({
+    const users = await this.prisma.user.findMany({
+      include: {
+        _count: { select: { orders: true } },
+        orders: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } }
+      },
       orderBy: { createdAt: 'desc' },
     });
+    return users.map(u => ({
+      ...u,
+      orderCount: u._count.orders,
+      lastOrderDate: u.orders[0]?.createdAt || null,
+      orders: undefined, // remove full array mapped by prisma
+      _count: undefined,
+    }));
   }
 
   async getBotStats() {

@@ -142,6 +142,10 @@ export class OrdersService {
     });
   }
 
+  async getUserOrderCount(userId: string) {
+    return this.prisma.order.count({ where: { userId, status: { not: 'pending_payment' } } });
+  }
+
   async getOrdersByUser(userId: string) {
     return this.prisma.order.findMany({
       where: { userId },
