@@ -5,8 +5,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Increase JSON body limit for base64 image payloads (screenshots ~5MB → base64 ~7MB)
+  // CRASH TEST PATCH: Reduced to 4mb to prevent Out of Memory DDOS attacks from fake receipts
   const expressApp = app.getHttpAdapter().getInstance();
-  expressApp.use(require('express').json({ limit: '15mb' }));
+  expressApp.use(require('express').json({ limit: '4mb' }));
 
   // Enable CORS for Mini App
   app.enableCors({
