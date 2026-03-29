@@ -65,7 +65,6 @@ export class NotificationService {
       deliveryLabel,
       order.address ? `📍 Manzil: ${order.address}` : '',
       floorLine,
-      order.latitude ? `📍 GPS: ${order.latitude}, ${order.longitude}` : '',
       '',
       `💰 To'lov: ${paymentLabel}`,
       '',
