@@ -96,50 +96,48 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     // ─── Admin inline button callbacks (dynamic keyboard) ─────────────────
     // Status flow: new → ready → delivered
     // Each keyboard includes an undo button for the previous state
-    const getNextKeyboard = (status: string, orderId: string) => {
-      switch (status) {
-        case 'new':
-          return {
-            inline_keyboard: [
+    const getNextKeyboard = (status: string, orderId: string, mapUrl?: string | null) => {
+      const mapRow = mapUrl ? [{ text: '📍 Xaritada ko\'rish', url: mapUrl }] : null;
+
+      const rows: any[] = (() => {
+        switch (status) {
+          case 'new':
+            return [
               [{ text: "✅ To'lov qabul qilindi", callback_data: `pay:${orderId}` }],
               [{ text: '❌ Bekor qilish', callback_data: `cancel:${orderId}` }],
-            ],
-          };
-        case 'ready':
-          return {
-            inline_keyboard: [
+            ];
+          case 'ready':
+            return [
               [{ text: '🚚 Yetkazib berildi', callback_data: `deliver:${orderId}` }],
               [{ text: '↩️ Orqaga (new)', callback_data: `undo:${orderId}:new` }],
               [{ text: '❌ Bekor qilish', callback_data: `cancel:${orderId}` }],
-            ],
-          };
-        case 'delivered':
-          return {
-            inline_keyboard: [
+            ];
+          case 'delivered':
+            return [
               [{ text: '✅ Yetkazib berildi', callback_data: 'noop' }],
               [{ text: '↩️ Orqaga (ready)', callback_data: `undo:${orderId}:ready` }],
-            ],
-          };
-        case 'cancelled':
-          return {
-            inline_keyboard: [
+            ];
+          case 'cancelled':
+            return [
               [{ text: '❌ Bekor qilindi', callback_data: 'noop' }],
               [{ text: '↩️ Orqaga (new)', callback_data: `undo:${orderId}:new` }],
-            ],
-          };
-        default:
-          return { inline_keyboard: [[{ text: `📋 ${status}`, callback_data: 'noop' }]] };
-      }
+            ];
+          default:
+            return [[{ text: `📋 ${status}`, callback_data: 'noop' }]];
+        }
+      })();
+
+      if (mapRow) rows.push(mapRow);
+      return { inline_keyboard: rows };
     };
 
     const handleOrderAction = async (ctx: any, status: string, label: string) => {
-
       try {
         const data: string = (ctx.callbackQuery as any)?.data || '';
         const orderId = data.split(':')[1];
         if (!orderId) { await ctx.answerCbQuery('ID topilmadi'); return; }
 
-        const order = await this.prisma.order.update({
+        const order = await (this.prisma as any).order.update({
           where: { id: orderId },
           data: { status },
           include: { user: true, items: true },
@@ -150,8 +148,15 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           await this.sendStatusUpdate(order.user.telegramId, order.user.language || 'uz', order.orderNumber, status).catch(() => {});
         }
 
-        // Update keyboard to next stage buttons
-        await ctx.editMessageReplyMarkup(getNextKeyboard(status, orderId)).catch(() => {});
+        // Build map URL if coords exist (persist map button across status changes)
+        const lat = (order as any).latitude ? Number((order as any).latitude) : null;
+        const lon = (order as any).longitude ? Number((order as any).longitude) : null;
+        const mapUrl = lat && lon
+          ? `https://yandex.com/maps/?ll=${lon},${lat}&pt=${lon},${lat},pm2rdm&z=17`
+          : null;
+
+        // Update keyboard preserving map button
+        await ctx.editMessageReplyMarkup(getNextKeyboard(status, orderId, mapUrl)).catch(() => {});
 
         await ctx.answerCbQuery(`✅ ${label}`);
         this.logger.log(`Order #${order.orderNumber} → ${status}`);
@@ -166,7 +171,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     this.bot.action(/^cancel:(.+)$/, (ctx) => handleOrderAction(ctx, 'cancelled', '❌ Bekor qilindi'));
     this.bot.action('noop', (ctx) => ctx.answerCbQuery().catch(() => {}));
 
-    // Undo: revert order to previous status (Fix 6)
+    // Undo: revert order to previous status
     this.bot.action(/^undo:(.+):(.+)$/, async (ctx) => {
       try {
         const data: string = (ctx.callbackQuery as any)?.data || '';
@@ -175,12 +180,18 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         const prevStatus = parts[2];
         if (!orderId || !prevStatus) { await ctx.answerCbQuery('ID topilmadi'); return; }
 
-        await this.prisma.order.update({
+        const order = await (this.prisma as any).order.update({
           where: { id: orderId },
           data: { status: prevStatus },
         });
 
-        await ctx.editMessageReplyMarkup(getNextKeyboard(prevStatus, orderId)).catch(() => {});
+        const lat = order?.latitude ? Number(order.latitude) : null;
+        const lon = order?.longitude ? Number(order.longitude) : null;
+        const mapUrl = lat && lon
+          ? `https://yandex.com/maps/?ll=${lon},${lat}&pt=${lon},${lat},pm2rdm&z=17`
+          : null;
+
+        await ctx.editMessageReplyMarkup(getNextKeyboard(prevStatus, orderId, mapUrl)).catch(() => {});
         await ctx.answerCbQuery(`↩️ ${prevStatus} ga qaytarildi`);
         this.logger.log(`Order ${orderId} reverted → ${prevStatus}`);
       } catch (e: any) {
