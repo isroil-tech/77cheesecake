@@ -163,4 +163,10 @@ export class CatalogController {
     this.checkAdmin(tgId);
     return this.catalogService.deleteVariant(id);
   }
+
+  @Post('admin/catalog/seed-initial')
+  async seedInitial(@Headers('x-telegram-id') tgId: string) {
+    this.checkAdmin(tgId);
+    return this.catalogService.seedInitial();
+  }
 }

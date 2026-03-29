@@ -133,4 +133,83 @@ export class CatalogService {
       this.prisma.productVariant.update({ where: { id }, data: { isActive: false } }),
     );
   }
+
+  // ─── Admin: Seed Initial Menu ─────────────────────────────────────
+  async seedInitial() {
+    // 1. Deactivate old test categories/products to start fresh
+    await this.prisma.category.updateMany({ data: { isActive: false } });
+    await this.prisma.product.updateMany({ data: { isActive: false } });
+    await this.prisma.productVariant.updateMany({ data: { isActive: false } });
+
+    // 2. Create Categories
+    const catClassic = await this.prisma.category.create({
+      data: { nameUz: 'Classic', nameRu: 'Классические', sortOrder: 1 }
+    });
+    const catTami = await this.prisma.category.create({
+      data: { nameUz: 'Ta\'mli', nameRu: 'С вкусами', sortOrder: 2 }
+    });
+
+    // 3. Create Classic Products
+    const classicProducts = [
+      { name: 'Classic cheesecake 23sm', price: 320000, type: 'whole' },
+      { name: 'Classic cheesecake 23sm (bezatilgan)', price: 360000, type: 'whole' },
+      { name: 'Classic cheesecake 12sm (bezatilgan)', price: 120000, type: 'whole' },
+      { name: 'Classic cheesecake bo’lak (standard)', price: 55000, type: 'slice' },
+      { name: 'Classic cheesecake bo’lak (mini)', price: 20000, type: 'slice' },
+    ];
+
+    for (let i = 0; i < classicProducts.length; i++) {
+      const p = classicProducts[i];
+      await this.prisma.product.create({
+        data: {
+          categoryId: catClassic.id,
+          nameUz: p.name,
+          nameRu: p.name,
+          sortOrder: i + 1,
+          variants: {
+            create: [{
+              nameUz: p.type === 'whole' ? 'Butun' : 'Bo\'lak',
+              nameRu: p.type === 'whole' ? 'Целиком' : 'Кусочек',
+              unitType: p.type,
+              price: p.price,
+              piecesPerUnit: p.type === 'whole' ? 8 : 1,
+            }]
+          }
+        }
+      });
+    }
+
+    // 4. Create Ta'mli Products
+    const tamliProducts = [
+      'Lotus', 'Dubai', 'Golubika', 'Mevali mix', 'Choco', 'Rafaello', 'Oreo', 'Mango', 'Malina'
+    ];
+
+    for (let i = 0; i < tamliProducts.length; i++) {
+      const name = tamliProducts[i];
+      await this.prisma.product.create({
+        data: {
+          categoryId: catTami.id,
+          nameUz: name,
+          nameRu: name,
+          sortOrder: i + 1,
+          variants: {
+            create: [
+              {
+                nameUz: 'Butun', nameRu: 'Целиком',
+                unitType: 'whole', price: 120000,
+                piecesPerUnit: 8, sortOrder: 1,
+              },
+              {
+                nameUz: 'Bo\'lak', nameRu: 'Кусочек',
+                unitType: 'slice', price: 20000,
+                piecesPerUnit: 1, sortOrder: 2,
+              }
+            ]
+          }
+        }
+      });
+    }
+
+    return { success: true, message: 'Database seeded successfully' };
+  }
 }
