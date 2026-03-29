@@ -236,6 +236,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           await ctx.reply(
             this.i18n.t(lang, 'openMenuText'),
             Markup.keyboard([
+              [Markup.button.webApp("🍰 Bo'laklab olish", `${personalUrl}&category=slice`)],
+              [Markup.button.webApp("🎂 Bezatilgan chizkeyk", `${personalUrl}&category=special`)],
               [Markup.button.webApp(this.i18n.t(lang, 'openMenu'), personalUrl)],
             ]).resize(),
           );
@@ -325,6 +327,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           await ctx.reply(
             this.i18n.t(lang, 'nameReceived', { name }) + '\n\n' + this.i18n.t(lang, 'openMenuText'),
             Markup.keyboard([
+              [Markup.button.webApp("🍰 Bo'laklab olish", `${personalUrl2}&category=slice`)],
+              [Markup.button.webApp("🎂 Bezatilgan chizkeyk", `${personalUrl2}&category=special`)],
               [Markup.button.webApp(this.i18n.t(lang, 'openMenu'), personalUrl2)],
             ]).resize(),
           );
@@ -344,6 +348,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           await ctx.reply(
             this.i18n.t(lang3, 'openMenuText'),
             Markup.keyboard([
+              [Markup.button.webApp("🍰 Bo'laklab olish", `${personalUrl3}&category=slice`)],
+              [Markup.button.webApp("🎂 Bezatilgan chizkeyk", `${personalUrl3}&category=special`)],
               [Markup.button.webApp(this.i18n.t(lang3, 'openMenu'), personalUrl3)],
             ]).resize(),
           );
