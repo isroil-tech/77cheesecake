@@ -34,7 +34,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     this.setupHandlers();
 
-    // Clear webhook and start custom polling
+    // Run bot startup in background so HTTP server starts immediately
+    // (prevents Railway health check SIGTERM on slow Telegram API calls)
+    setTimeout(() => {
+      this.initBot().catch((e: any) => {
+        this.logger.error('Bot init error:', e.message);
+      });
+    }, 0);
+  }
+
+  private async initBot() {
     try {
       await this.bot.telegram.deleteWebhook({ drop_pending_updates: true });
       this.logger.log('Webhook cleared');
@@ -42,7 +51,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.logger.error('deleteWebhook error:', e.message);
     }
 
-    // Start custom manual polling with short timeout
     this.pollingActive = true;
     this.startCustomPolling();
     this.logger.log('🤖 Telegram bot started with custom polling');
