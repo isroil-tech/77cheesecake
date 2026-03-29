@@ -169,4 +169,10 @@ export class CatalogController {
     this.checkAdmin(tgId);
     return this.catalogService.seedInitial();
   }
+
+  @Delete('admin/catalog/clean-fakes')
+  async cleanFakes(@Headers('x-telegram-id') tgId: string) {
+    this.checkAdmin(tgId);
+    return this.catalogService.cleanFakes();
+  }
 }

@@ -134,6 +134,27 @@ export class CatalogService {
     );
   }
 
+  async cleanFakes() {
+    const fakes = await this.prisma.product.findMany({
+      where: { isActive: false },
+      include: { variants: true },
+    });
+    const fakeVariantIds = fakes.flatMap(f => f.variants.map(v => v.id));
+    
+    if (fakeVariantIds.length > 0) {
+      await this.prisma.cartItem.deleteMany({ where: { productVariantId: { in: fakeVariantIds } } });
+      await this.prisma.orderItem.updateMany({
+        where: { productVariantId: { in: fakeVariantIds } },
+        data: { productVariantId: null },
+      });
+      await this.prisma.productVariant.deleteMany({ where: { id: { in: fakeVariantIds } } });
+    }
+    
+    await this.prisma.product.deleteMany({ where: { isActive: false } });
+    await this.prisma.category.deleteMany({ where: { isActive: false } });
+    return { message: 'Fake mahsulotlar muvaffaqiyatli tozalandi!' };
+  }
+
   // ─── Admin: Seed Initial Menu ─────────────────────────────────────
   async seedInitial() {
     // 1. Deactivate old test categories/products to start fresh
