@@ -28,8 +28,8 @@
     .topbar-refresh:hover { border-color: var(--primary); color: var(--primary); }
 
     /* NAV TABS */
-    .nav-tabs { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; padding: 10px 16px; gap: 8px; }
-    .nav-tab { flex: 1 1 calc(33% - 8px); padding: 10px 8px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; transition: all .2s; }
+    .nav-tabs { background: var(--surface); border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; padding: 10px 16px; gap: 8px; }
+    .nav-tab { padding: 10px 8px; font-size: 13px; font-weight: 600; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; transition: all .2s; }
     .nav-tab.active { background: var(--primary); color: #1a0610; border-color: var(--primary); }
 
     .main { padding: 20px; max-width: 1200px; margin: 0 auto; }
