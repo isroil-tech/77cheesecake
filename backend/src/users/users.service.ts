@@ -91,7 +91,14 @@ export class UsersService {
 
   async deleteByTelegramId(telegramId: string) {
     try {
-      await (this.prisma as any).user.delete({ where: { telegramId } });
+      await (this.prisma as any).user.update({
+        where: { telegramId },
+        data: {
+          phone: null,
+          firstName: null,
+          lastName: null,
+        },
+      });
     } catch (_) {}
   }
 }

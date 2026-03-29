@@ -215,7 +215,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     this.bot.command('resetme', async (ctx) => {
       try {
         await this.usersService.deleteByTelegramId(ctx.from.id.toString());
-        await ctx.reply('🗑 Profilingiz bazadan o\'chirildi. Boshqatdan ro\'yxatdan o\'tish uchun /start ni bosing.');
+        this.userStates.delete(ctx.from.id);
+        await ctx.reply('🗑 Profilingiz bazadan tozalandi.\n\nIltimos, qaytadan /start ni bosing.', Markup.removeKeyboard());
       } catch (e: any) {
         this.logger.error('resetme error', e.message);
       }
