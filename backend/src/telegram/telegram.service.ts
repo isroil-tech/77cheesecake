@@ -241,6 +241,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           '🔐 Admin panel:',
           Markup.inlineKeyboard([
             [Markup.button.webApp('⚙️ Admin Panelni Ochish', adminUrl)],
+            [Markup.button.callback('📢 Xabar yuborish (Rassilka)', 'start_broadcast')],
           ]),
         );
       } catch (e: any) {
@@ -249,27 +250,40 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     });
 
 
-    // /broadcast command
-    this.bot.command('broadcast', async (ctx) => {
+    const startBroadcastFlow = async (ctx: any) => {
       try {
         const telegramId = ctx.from.id.toString();
         const adminIds = (this.config.get<string>('ADMIN_TELEGRAM_IDS') || '')
           .split(',').map(id => id.trim()).filter(Boolean);
-        if (!adminIds.includes(telegramId)) return;
+        if (!adminIds.includes(telegramId)) {
+          if (ctx.callbackQuery) await ctx.answerCbQuery('❌ Siz admin emassiz.', { show_alert: true });
+          return;
+        }
 
         this.userStates.set(ctx.from.id, { step: 'awaiting_broadcast_target' });
-        await ctx.reply(
-          '📢 Xabar qaysi auditoriyaga yuborilsin?',
-          Markup.inlineKeyboard([
-            [Markup.button.callback("🇺🇿 O'zbek tili", 'bc_uz'), Markup.button.callback("🇷🇺 Rus tili", 'bc_ru')],
-            [Markup.button.callback("🌐 Barcha (Hammasi)", 'bc_all')],
-            [Markup.button.callback("❌ Bekor qilish", 'bc_cancel')],
-          ])
-        );
+        const text = '📢 Xabar qaysi auditoriyaga yuborilsin?';
+        const keyboard = Markup.inlineKeyboard([
+          [Markup.button.callback("🇺🇿 O'zbek tili", 'bc_uz'), Markup.button.callback("🇷🇺 Rus tili", 'bc_ru')],
+          [Markup.button.callback("🌐 Barcha (Hammasi)", 'bc_all')],
+          [Markup.button.callback("❌ Bekor qilish", 'bc_cancel')],
+        ]);
+
+        if (ctx.callbackQuery) {
+          await ctx.answerCbQuery();
+          await ctx.editMessageText(text, keyboard);
+        } else {
+          await ctx.reply(text, keyboard);
+        }
       } catch (e: any) {
-        this.logger.error('broadcast command error:', e.message);
+        this.logger.error('startBroadcastFlow error:', e.message);
       }
-    });
+    };
+
+    // /broadcast command
+    this.bot.command('broadcast', startBroadcastFlow);
+    
+    // start_broadcast action
+    this.bot.action('start_broadcast', startBroadcastFlow);
 
     this.bot.action(/^bc_(uz|ru|all|cancel)$/, async (ctx) => {
       try {
