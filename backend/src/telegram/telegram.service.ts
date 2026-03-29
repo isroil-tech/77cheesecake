@@ -211,6 +211,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
     });
 
+    // /resetme (for testing)
+    this.bot.command('resetme', async (ctx) => {
+      try {
+        await this.usersService.deleteByTelegramId(ctx.from.id.toString());
+        await ctx.reply('🗑 Profilingiz bazadan o\'chirildi. Boshqatdan ro\'yxatdan o\'tish uchun /start ni bosing.');
+      } catch (e: any) {
+        this.logger.error('resetme error', e.message);
+      }
+    });
+
     // /admin
     this.bot.command('admin', async (ctx) => {
       try {

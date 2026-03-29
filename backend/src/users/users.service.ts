@@ -88,4 +88,10 @@ export class UsersService {
       last7Days,
     };
   }
+
+  async deleteByTelegramId(telegramId: string) {
+    try {
+      await (this.prisma as any).user.delete({ where: { telegramId } });
+    } catch (_) {}
+  }
 }
