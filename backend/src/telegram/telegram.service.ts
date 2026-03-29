@@ -259,6 +259,11 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
         await this.prisma.orderItem.deleteMany({});
         const delOrders = await this.prisma.order.deleteMany({});
+        
+        // Delete carts to avoid foreign key restrict violation on users
+        await this.prisma.cartItem.deleteMany({});
+        await this.prisma.cart.deleteMany({});
+
         const delUsers = await this.prisma.user.deleteMany({
           // Do not delete admins to prevent lockout
           where: { telegramId: { notIn: adminIds } }
