@@ -249,6 +249,27 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
     });
 
+    // /cleardb_confirm (for testing)
+    this.bot.command('cleardb_confirm', async (ctx) => {
+      try {
+        const telegramId = ctx.from.id.toString();
+        const adminIds = (this.config.get<string>('ADMIN_TELEGRAM_IDS') || '')
+          .split(',').map(id => id.trim()).filter(Boolean);
+        if (!adminIds.includes(telegramId)) return;
+
+        await this.prisma.orderItem.deleteMany({});
+        const delOrders = await this.prisma.order.deleteMany({});
+        const delUsers = await this.prisma.user.deleteMany({
+          // Do not delete admins to prevent lockout
+          where: { telegramId: { notIn: adminIds } }
+        });
+
+        await ctx.reply(`💥 Baza tozalandi:\n- ${delOrders.count} ta buyurtma\n- ${delUsers.count} ta foydalanuvchi o'chirildi!`);
+      } catch (e: any) {
+        this.logger.error('cleardb error', e.message);
+        await ctx.reply('Xatolik: ' + e.message);
+      }
+    });
 
     const startBroadcastFlow = async (ctx: any) => {
       try {
