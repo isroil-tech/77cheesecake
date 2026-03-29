@@ -47,8 +47,8 @@
     .page { display: none; } .page.active { display: block; }
 
     /* STAT CARDS */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px 20px; position: relative; overflow: hidden; display: flex; flex-direction: column; height: 145px; justify-content: flex-start; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); grid-auto-rows: 1fr; gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px 20px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-start; height: 100%; box-sizing: border-box; }
     .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--primary); opacity: 0.8; }
     .stat-value { font-size: 28px; font-weight: 600; color: var(--text); line-height: 1; letter-spacing: -0.5px; margin-bottom: 8px; }
     .stat-label { font-size: 13px; color: var(--muted); font-weight: 500; line-height: 1.3; }
@@ -234,9 +234,7 @@
         <div class="stat-card"><div class="stat-value" id="s-today">—</div><div class="stat-label">Bugungi buyurtmalar</div></div>
         <div class="stat-card"><div class="stat-value" id="s-active">—</div><div class="stat-label">Faol buyurtmalar</div></div>
         <div class="stat-card"><div class="stat-value" id="s-revenue">—</div><div class="stat-label">Bugungi daromad</div><div class="stat-sub" id="s-total-rev"></div></div>
-      </div>
-      <!-- Bot stats -->
-      <div class="stats-grid">
+        <!-- Bot stats -->
         <div class="stat-card"><div class="stat-value" id="b-total">—</div><div class="stat-label">Jami foydalanuvchilar</div></div>
         <div class="stat-card"><div class="stat-value" id="b-phone">—</div><div class="stat-label">Telefon raqamli</div></div>
         <div class="stat-card"><div class="stat-value" id="b-new30">—</div><div class="stat-label">Oxirgi 30 kunda</div></div>
@@ -518,7 +516,6 @@
     try {
       const res = await fetch('/api/v1/admin/users', { headers: { 'x-telegram-id': tgId } });
       allUsers = await res.json();
-      document.getElementById('bc-count').textContent = allUsers.length + ' foydalanuvchi';
       renderUsersTable();
     } catch(e){ console.error(e); }
   }
