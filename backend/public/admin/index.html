@@ -660,6 +660,7 @@
               <span class="${p.isActive?'active-badge':'inactive-badge'}">${p.isActive?'Faol':'Nofaol'}</span>
             </div>
             <div class="prod-cat">${p.category?.nameUz||''}</div>
+            ${p.descriptionUz ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.descriptionUz}</div>` : ''}
           </div>
           <div class="prod-actions">
             <button class="btn-sm" onclick="openProdModal('${p.id}')">Tahrir</button>
@@ -696,6 +697,10 @@
         <div class="form-row" style="margin-bottom:10px">
           <input class="form-input" id="pm-nameUz" placeholder="Nomi (UZ)" value="${p?.nameUz||''}">
           <input class="form-input" id="pm-nameRu" placeholder="Nomi (RU)" value="${p?.nameRu||''}">
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <textarea class="form-input" id="pm-descUz" placeholder="Tavsifi (UZ)" rows="2">${p?.descriptionUz||''}</textarea>
+          <textarea class="form-input" id="pm-descRu" placeholder="Tavsifi (RU)" rows="2">${p?.descriptionRu||''}</textarea>
         </div>
         <select class="form-input" id="pm-cat">${catOptions}</select>
         <input type="hidden" id="pm-img" value="${p?.imageUrl||''}">
@@ -760,6 +765,8 @@
     const body = {
       nameUz: document.getElementById('pm-nameUz').value.trim(),
       nameRu: document.getElementById('pm-nameRu').value.trim(),
+      descriptionUz: document.getElementById('pm-descUz').value.trim() || undefined,
+      descriptionRu: document.getElementById('pm-descRu').value.trim() || undefined,
       categoryId: document.getElementById('pm-cat').value,
       imageUrl: document.getElementById('pm-img').value.trim() || undefined,
       sortOrder: parseInt(document.getElementById('pm-sort').value)||0,
